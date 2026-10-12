@@ -1,0 +1,15 @@
+[
+  { "id": "all", "label": "All", "icon": "▦" },
+  { "id": "design", "label": "Design", "icon": "🎨" },
+  { "id": "video", "label": "Video", "icon": "🎥" },
+  { "id": "music", "label": "Music", "icon": "🎵" },
+  { "id": "events", "label": "Events", "icon": "🎉" },
+  { "id": "tutoring", "label": "Tutoring", "icon": "📚" },
+  { "id": "makeup", "label": "Makeup", "icon": "💄" },
+  { "id": "photography", "label": "Photography", "icon": "📷" },
+  { "id": "writing", "label": "Writing", "icon": "✍️" },
+  { "id": "fitness", "label": "Fitness", "icon": "🧘" },
+  { "id": "tech", "label": "Tech", "icon": "💻" },
+  { "id": "food", "label": "Food", "icon": "🍳" },
+  { "id": "other", "label": "Other", "icon": "✨" }
+]
