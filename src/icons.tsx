@@ -18,3 +18,7 @@ export function TabIcon({ name, color, size = 23 }: { name: 'people' | 'search' 
 export function ChatIcon({ color = '#111638', size = 23 }: { color?: string; size?: number }) {
   return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"><Path d="M20.5 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-3.4-.7L3.5 21l1.6-4.8A8.5 8.5 0 1 1 20.5 11.5Z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" /><Path d="M8 11.5h8M8 14.6h5.2" stroke={color} strokeWidth={1.9} strokeLinecap="round" /></Svg>;
 }
+
+export function CloseIcon({ color = '#111638', size = 22 }: { color?: string; size?: number }) {
+  return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"><Path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5" stroke={color} strokeWidth={2.1} strokeLinecap="round" /></Svg>;
+}
