@@ -1,0 +1,35 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe\.npmrc
+5 silly config load:file:C:\Users\samue\.npmrc
+6 silly config load:file:C:\Users\samue\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install @types/react-dom@^19.2.0
+8 verbose argv "install" "--save-dev" "@types/react-dom@^19.2.0" "--cache" "..\\.npm-cache" "--no-audit" "--no-fund"
+9 verbose logfile logs-max:10 dir:C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_40_38_051Z-
+10 verbose logfile C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_40_38_051Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly logfile done cleaning log files
+14 silly idealTree buildDeps
+15 silly fetch manifest @types/react-dom@^19.2.0
+16 silly packumentCache full:https://registry.npmjs.org/@types%2freact-dom cache-miss
+17 http fetch GET 200 https://registry.npmjs.org/@types%2freact-dom 381ms (cache miss)
+18 silly packumentCache full:https://registry.npmjs.org/@types%2freact-dom set size:undefined disposed:false
+19 silly fetch manifest @types/react@^19.2.0
+20 silly packumentCache full:https://registry.npmjs.org/@types%2freact cache-miss
+21 http fetch GET 200 https://registry.npmjs.org/@types%2freact 71ms (cache revalidated)
+22 silly packumentCache full:https://registry.npmjs.org/@types%2freact set size:2642195 disposed:false
+23 silly placeDep ROOT @types/react-dom@19.3.0 OK for: whychooseme@0.0.1 want: ^19.2.0
+24 silly reify moves {}
+25 http cache @types/react-dom@https://registry.npmjs.org/@types/react-dom/-/react-dom-19.3.0.tgz 0ms (cache hit)
+26 silly tarball no local data for @types/react-dom@https://registry.npmjs.org/@types/react-dom/-/react-dom-19.3.0.tgz. Extracting by manifest.
+27 http fetch GET 200 https://registry.npmjs.org/@types/react-dom/-/react-dom-19.3.0.tgz 116ms (cache miss)
+28 silly ADD node_modules/@types/react-dom
+29 verbose cwd C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe
+30 verbose os Windows_NT 10.0.26300
+31 verbose node v24.16.0
+32 verbose npm  v11.13.0
+33 verbose exit 0
+34 info ok

@@ -1,0 +1,52 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe\.npmrc
+5 silly config load:file:C:\Users\samue\.npmrc
+6 silly config load:file:C:\Users\samue\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install @react-native-async-storage/async-storage@3.1.1
+8 verbose argv "install" "@react-native-async-storage/async-storage@3.1.1" "--cache" "..\\.npm-cache" "--no-audit" "--no-fund"
+9 verbose logfile logs-max:10 dir:C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_48_48_175Z-
+10 verbose logfile C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_48_48_175Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly logfile done cleaning log files
+14 silly idealTree buildDeps
+15 silly fetch manifest @react-native-async-storage/async-storage@3.1.1
+16 silly packumentCache full:https://registry.npmjs.org/@react-native-async-storage%2fasync-storage cache-miss
+17 http fetch GET 200 https://registry.npmjs.org/@react-native-async-storage%2fasync-storage 289ms (cache miss)
+18 silly packumentCache full:https://registry.npmjs.org/@react-native-async-storage%2fasync-storage set size:undefined disposed:false
+19 silly fetch manifest react@19.2.3
+20 silly packumentCache full:https://registry.npmjs.org/react cache-miss
+21 http cache https://registry.npmjs.org/react 23ms (cache hit)
+22 silly packumentCache full:https://registry.npmjs.org/react set size:7030932 disposed:false
+23 silly fetch manifest react-native@0.84.1
+24 silly packumentCache full:https://registry.npmjs.org/react-native cache-miss
+25 http cache https://registry.npmjs.org/react-native 43ms (cache hit)
+26 silly packumentCache full:https://registry.npmjs.org/react-native set size:15969826 disposed:false
+27 silly fetch manifest @types/react@^19.2.0
+28 silly packumentCache full:https://registry.npmjs.org/@types%2freact cache-miss
+29 http cache https://registry.npmjs.org/@types%2freact 12ms (cache hit)
+30 silly packumentCache full:https://registry.npmjs.org/@types%2freact set size:2642195 disposed:false
+31 silly placeDep ROOT @react-native-async-storage/async-storage@3.1.1 OK for: whychooseme@0.0.1 want: 3.1.1
+32 silly fetch manifest idb@8.0.3
+33 silly packumentCache full:https://registry.npmjs.org/idb cache-miss
+34 http fetch GET 200 https://registry.npmjs.org/idb 44ms (cache miss)
+35 silly packumentCache full:https://registry.npmjs.org/idb set size:undefined disposed:false
+36 silly placeDep ROOT idb@8.0.3 OK for: @react-native-async-storage/async-storage@3.1.1 want: 8.0.3
+37 silly reify moves {}
+38 http cache idb@https://registry.npmjs.org/idb/-/idb-8.0.3.tgz 0ms (cache hit)
+39 http cache @react-native-async-storage/async-storage@https://registry.npmjs.org/@react-native-async-storage/async-storage/-/async-storage-3.1.1.tgz 0ms (cache hit)
+40 silly tarball no local data for idb@https://registry.npmjs.org/idb/-/idb-8.0.3.tgz. Extracting by manifest.
+41 silly tarball no local data for @react-native-async-storage/async-storage@https://registry.npmjs.org/@react-native-async-storage/async-storage/-/async-storage-3.1.1.tgz. Extracting by manifest.
+42 http fetch GET 200 https://registry.npmjs.org/idb/-/idb-8.0.3.tgz 87ms (cache miss)
+43 http fetch GET 200 https://registry.npmjs.org/@react-native-async-storage/async-storage/-/async-storage-3.1.1.tgz 2289ms (cache miss)
+44 silly ADD node_modules/idb
+45 silly ADD node_modules/@react-native-async-storage/async-storage
+46 verbose cwd C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe
+47 verbose os Windows_NT 10.0.26300
+48 verbose node v24.16.0
+49 verbose npm  v11.13.0
+50 verbose exit 0
+51 info ok

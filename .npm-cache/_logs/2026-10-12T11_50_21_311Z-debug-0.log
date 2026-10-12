@@ -1,0 +1,69 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe\.npmrc
+5 silly config load:file:C:\Users\samue\.npmrc
+6 silly config load:file:C:\Users\samue\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm pack @expo-google-fonts/comic-neue@0.4.1
+8 verbose argv "pack" "@expo-google-fonts/comic-neue@0.4.1" "--pack-destination" "." "--cache" "..\\.npm-cache" "--loglevel" "silent"
+9 verbose logfile logs-max:10 dir:C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_50_21_311Z-
+10 verbose logfile C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_50_21_311Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly logfile done cleaning log files
+13 http fetch GET 200 https://registry.npmjs.org/@expo-google-fonts%2fcomic-neue 1093ms (cache miss)
+14 http fetch GET 200 https://registry.npmjs.org/@expo-google-fonts%2fcomic-neue 49ms (cache revalidated)
+15 http fetch GET 200 https://registry.npmjs.org/@expo-google-fonts/comic-neue/-/comic-neue-0.4.1.tgz 724ms (cache miss)
+16 notice
+17 notice 📦  @expo-google-fonts/comic-neue@0.4.1
+18 notice Tarball Contents
+19 notice 51.6kB 300Light_Italic/ComicNeue_300Light_Italic.ttf
+19 notice 115.8kB 300Light_Italic/ComicNeue_300Light_Italic.ttf.png
+19 notice 157B 300Light_Italic/index.d.ts
+19 notice 208B 300Light_Italic/index.js
+19 notice 53.4kB 300Light/ComicNeue_300Light.ttf
+19 notice 93.4kB 300Light/ComicNeue_300Light.ttf.png
+19 notice 150B 300Light/index.d.ts
+19 notice 194B 300Light/index.js
+19 notice 51.8kB 400Regular_Italic/ComicNeue_400Regular_Italic.ttf
+19 notice 121.0kB 400Regular_Italic/ComicNeue_400Regular_Italic.ttf.png
+19 notice 159B 400Regular_Italic/index.d.ts
+19 notice 212B 400Regular_Italic/index.js
+19 notice 54.8kB 400Regular/ComicNeue_400Regular.ttf
+19 notice 97.5kB 400Regular/ComicNeue_400Regular.ttf.png
+19 notice 152B 400Regular/index.d.ts
+19 notice 198B 400Regular/index.js
+19 notice 53.3kB 700Bold_Italic/ComicNeue_700Bold_Italic.ttf
+19 notice 107.5kB 700Bold_Italic/ComicNeue_700Bold_Italic.ttf.png
+19 notice 156B 700Bold_Italic/index.d.ts
+19 notice 206B 700Bold_Italic/index.js
+19 notice 53.4kB 700Bold/ComicNeue_700Bold.ttf
+19 notice 91.4kB 700Bold/ComicNeue_700Bold.ttf.png
+19 notice 149B 700Bold/index.d.ts
+19 notice 192B 700Bold/index.js
+19 notice 1.1kB LICENSE
+19 notice 4.4kB LICENSE_FONT
+19 notice 6.1kB README.md
+19 notice 44.6kB font-family.png
+19 notice 452B index.d.ts
+19 notice 759B index.js
+19 notice 932B metadata.json
+19 notice 540B package.json
+19 notice 575B useFonts.d.ts
+19 notice 748B useFonts.js
+20 notice Tarball Details
+21 notice name: @expo-google-fonts/comic-neue
+22 notice version: 0.4.1
+23 notice filename: expo-google-fonts-comic-neue-0.4.1.tgz
+24 notice package size: 828.0 kB
+25 notice unpacked size: 1.0 MB
+26 notice shasum: 62266de095fc934ace427046214f206bf23b9b5d
+27 notice integrity: sha512-1kYFjZeSQnGFe[...]aETVthVPsF09Q==
+28 notice total files: 34
+29 notice
+30 verbose cwd C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe
+31 verbose os Windows_NT 10.0.26300
+32 verbose node v24.16.0
+33 verbose npm  v11.13.0
+34 verbose exit 0
+35 info ok

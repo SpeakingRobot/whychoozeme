@@ -1,0 +1,109 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe\.npmrc
+5 silly config load:file:C:\Users\samue\.npmrc
+6 silly config load:file:C:\Users\samue\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm pack @expo-google-fonts/nunito@0.4.2
+8 verbose argv "pack" "@expo-google-fonts/nunito@0.4.2" "--pack-destination" "." "--cache" "..\\.npm-cache" "--loglevel" "silent"
+9 verbose logfile logs-max:10 dir:C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_50_19_950Z-
+10 verbose logfile C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_50_19_950Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly logfile done cleaning log files
+13 http fetch GET 200 https://registry.npmjs.org/@expo-google-fonts%2fnunito 722ms (cache miss)
+14 http fetch GET 200 https://registry.npmjs.org/@expo-google-fonts%2fnunito 72ms (cache revalidated)
+15 http fetch GET 200 https://registry.npmjs.org/@expo-google-fonts/nunito/-/nunito-0.4.2.tgz 637ms (cache miss)
+16 notice
+17 notice 📦  @expo-google-fonts/nunito@0.4.2
+18 notice Tarball Contents
+19 notice 159B 200ExtraLight_Italic/index.d.ts
+19 notice 212B 200ExtraLight_Italic/index.js
+19 notice 135.3kB 200ExtraLight_Italic/Nunito_200ExtraLight_Italic.ttf
+19 notice 109.3kB 200ExtraLight_Italic/Nunito_200ExtraLight_Italic.ttf.png
+19 notice 152B 200ExtraLight/index.d.ts
+19 notice 198B 200ExtraLight/index.js
+19 notice 132.0kB 200ExtraLight/Nunito_200ExtraLight.ttf
+19 notice 86.4kB 200ExtraLight/Nunito_200ExtraLight.ttf.png
+19 notice 154B 300Light_Italic/index.d.ts
+19 notice 202B 300Light_Italic/index.js
+19 notice 135.7kB 300Light_Italic/Nunito_300Light_Italic.ttf
+19 notice 103.7kB 300Light_Italic/Nunito_300Light_Italic.ttf.png
+19 notice 147B 300Light/index.d.ts
+19 notice 188B 300Light/index.js
+19 notice 132.2kB 300Light/Nunito_300Light.ttf
+19 notice 82.3kB 300Light/Nunito_300Light.ttf.png
+19 notice 156B 400Regular_Italic/index.d.ts
+19 notice 206B 400Regular_Italic/index.js
+19 notice 135.5kB 400Regular_Italic/Nunito_400Regular_Italic.ttf
+19 notice 110.1kB 400Regular_Italic/Nunito_400Regular_Italic.ttf.png
+19 notice 149B 400Regular/index.d.ts
+19 notice 192B 400Regular/index.js
+19 notice 132.2kB 400Regular/Nunito_400Regular.ttf
+19 notice 89.7kB 400Regular/Nunito_400Regular.ttf.png
+19 notice 155B 500Medium_Italic/index.d.ts
+19 notice 204B 500Medium_Italic/index.js
+19 notice 135.6kB 500Medium_Italic/Nunito_500Medium_Italic.ttf
+19 notice 108.7kB 500Medium_Italic/Nunito_500Medium_Italic.ttf.png
+19 notice 148B 500Medium/index.d.ts
+19 notice 190B 500Medium/index.js
+19 notice 132.3kB 500Medium/Nunito_500Medium.ttf
+19 notice 87.1kB 500Medium/Nunito_500Medium.ttf.png
+19 notice 157B 600SemiBold_Italic/index.d.ts
+19 notice 208B 600SemiBold_Italic/index.js
+19 notice 135.4kB 600SemiBold_Italic/Nunito_600SemiBold_Italic.ttf
+19 notice 115.0kB 600SemiBold_Italic/Nunito_600SemiBold_Italic.ttf.png
+19 notice 150B 600SemiBold/index.d.ts
+19 notice 194B 600SemiBold/index.js
+19 notice 132.2kB 600SemiBold/Nunito_600SemiBold.ttf
+19 notice 93.4kB 600SemiBold/Nunito_600SemiBold.ttf.png
+19 notice 153B 700Bold_Italic/index.d.ts
+19 notice 200B 700Bold_Italic/index.js
+19 notice 135.4kB 700Bold_Italic/Nunito_700Bold_Italic.ttf
+19 notice 105.6kB 700Bold_Italic/Nunito_700Bold_Italic.ttf.png
+19 notice 146B 700Bold/index.d.ts
+19 notice 186B 700Bold/index.js
+19 notice 132.1kB 700Bold/Nunito_700Bold.ttf
+19 notice 84.6kB 700Bold/Nunito_700Bold.ttf.png
+19 notice 158B 800ExtraBold_Italic/index.d.ts
+19 notice 210B 800ExtraBold_Italic/index.js
+19 notice 135.4kB 800ExtraBold_Italic/Nunito_800ExtraBold_Italic.ttf
+19 notice 115.4kB 800ExtraBold_Italic/Nunito_800ExtraBold_Italic.ttf.png
+19 notice 151B 800ExtraBold/index.d.ts
+19 notice 196B 800ExtraBold/index.js
+19 notice 132.1kB 800ExtraBold/Nunito_800ExtraBold.ttf
+19 notice 94.7kB 800ExtraBold/Nunito_800ExtraBold.ttf.png
+19 notice 154B 900Black_Italic/index.d.ts
+19 notice 202B 900Black_Italic/index.js
+19 notice 135.3kB 900Black_Italic/Nunito_900Black_Italic.ttf
+19 notice 108.3kB 900Black_Italic/Nunito_900Black_Italic.ttf.png
+19 notice 147B 900Black/index.d.ts
+19 notice 188B 900Black/index.js
+19 notice 132.0kB 900Black/Nunito_900Black.ttf
+19 notice 90.3kB 900Black/Nunito_900Black.ttf.png
+19 notice 1.1kB LICENSE
+19 notice 4.4kB LICENSE_FONT
+19 notice 10.6kB README.md
+19 notice 20.9kB font-family.png
+19 notice 875B index.d.ts
+19 notice 1.6kB index.js
+19 notice 2.3kB metadata.json
+19 notice 524B package.json
+19 notice 575B useFonts.d.ts
+19 notice 748B useFonts.js
+20 notice Tarball Details
+21 notice name: @expo-google-fonts/nunito
+22 notice version: 0.4.2
+23 notice filename: expo-google-fonts-nunito-0.4.2.tgz
+24 notice package size: 2.5 MB
+25 notice unpacked size: 3.8 MB
+26 notice shasum: 9ce15e924dc7fc29a2257afb7f78a3f0e7d0d39f
+27 notice integrity: sha512-1KCWphw/I2ugq[...]AE3sc8g0VaY0Q==
+28 notice total files: 74
+29 notice
+30 verbose cwd C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe
+31 verbose os Windows_NT 10.0.26300
+32 verbose node v24.16.0
+33 verbose npm  v11.13.0
+34 verbose exit 0
+35 info ok

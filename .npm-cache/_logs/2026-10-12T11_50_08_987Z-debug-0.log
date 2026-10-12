@@ -1,0 +1,20 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe\.npmrc
+5 silly config load:file:C:\Users\samue\.npmrc
+6 silly config load:file:C:\Users\samue\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm view @expo-google-fonts/comic-neue version dist.unpackedSize
+8 verbose argv "view" "@expo-google-fonts/comic-neue" "version" "dist.unpackedSize" "--json" "--cache" "..\\.npm-cache"
+9 verbose logfile logs-max:10 dir:C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_50_08_987Z-
+10 verbose logfile C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_50_08_987Z-debug-0.log
+11 silly logfile start cleaning logs, removing 2 files
+12 silly logfile done cleaning log files
+13 http fetch GET 200 https://registry.npmjs.org/@expo-google-fonts%2fcomic-neue 990ms (cache miss)
+14 verbose cwd C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe
+15 verbose os Windows_NT 10.0.26300
+16 verbose node v24.16.0
+17 verbose npm  v11.13.0
+18 verbose exit 0
+19 info ok

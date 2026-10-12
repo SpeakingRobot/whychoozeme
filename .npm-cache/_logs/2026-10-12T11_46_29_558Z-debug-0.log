@@ -1,0 +1,163 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe\.npmrc
+5 silly config load:file:C:\Users\samue\.npmrc
+6 silly config load:file:C:\Users\samue\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install" "--cache" "..\\.npm-cache" "--no-audit" "--no-fund"
+9 verbose logfile logs-max:10 dir:C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_46_29_558Z-
+10 verbose logfile C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_46_29_558Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly logfile done cleaning log files
+14 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+15 silly idealTree buildDeps
+16 silly fetch manifest @rnx-kit/jest-preset@^0.3.1
+17 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2fjest-preset cache-miss
+18 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2fjest-preset 1151ms (cache miss)
+19 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2fjest-preset set size:undefined disposed:false
+20 silly fetch manifest @react-native/jest-preset@>=0.85
+21 silly packumentCache full:https://registry.npmjs.org/@react-native%2fjest-preset cache-miss
+22 http fetch GET 200 https://registry.npmjs.org/@react-native%2fjest-preset 94ms (cache miss)
+23 silly packumentCache full:https://registry.npmjs.org/@react-native%2fjest-preset set size:undefined disposed:false
+24 silly fetch manifest react@19.2.3
+25 silly packumentCache full:https://registry.npmjs.org/react cache-miss
+26 http fetch GET 200 https://registry.npmjs.org/react 73ms (cache revalidated)
+27 silly packumentCache full:https://registry.npmjs.org/react set size:7030932 disposed:false
+28 silly fetch manifest react-native@0.84.1
+29 silly packumentCache full:https://registry.npmjs.org/react-native cache-miss
+30 http fetch GET 200 https://registry.npmjs.org/react-native 105ms (cache revalidated)
+31 silly packumentCache full:https://registry.npmjs.org/react-native set size:15969826 disposed:false
+32 silly fetch manifest @types/react@^19.2.0
+33 silly packumentCache full:https://registry.npmjs.org/@types%2freact cache-miss
+34 http fetch GET 200 https://registry.npmjs.org/@types%2freact 69ms (cache revalidated)
+35 silly packumentCache full:https://registry.npmjs.org/@types%2freact set size:2642195 disposed:false
+36 silly placeDep ROOT @rnx-kit/jest-preset@0.3.3 OK for: whychooseme@0.0.1 want: ^0.3.1
+37 silly fetch manifest @babel/preset-typescript@^7.0.0
+38 silly packumentCache full:https://registry.npmjs.org/@babel%2fpreset-typescript cache-miss
+39 silly fetch manifest @rnx-kit/tools-node@^3.0.5
+40 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftools-node cache-miss
+41 silly fetch manifest @rnx-kit/tools-react-native@^2.3.2
+42 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftools-react-native cache-miss
+43 http fetch GET 200 https://registry.npmjs.org/@babel%2fpreset-typescript 81ms (cache miss)
+44 silly packumentCache full:https://registry.npmjs.org/@babel%2fpreset-typescript set size:undefined disposed:false
+45 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftools-react-native 760ms (cache miss)
+46 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftools-react-native set size:undefined disposed:false
+47 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftools-node 880ms (cache miss)
+48 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftools-node set size:undefined disposed:false
+49 silly fetch manifest @babel/core@^7.0.0
+50 silly packumentCache full:https://registry.npmjs.org/@babel%2fcore cache-miss
+51 http fetch GET 200 https://registry.npmjs.org/@babel%2fcore 67ms (cache revalidated)
+52 silly packumentCache full:https://registry.npmjs.org/@babel%2fcore set size:801647 disposed:false
+53 silly fetch manifest @react-native-community/cli-types@*
+54 silly packumentCache full:https://registry.npmjs.org/@react-native-community%2fcli-types cache-miss
+55 http fetch GET 200 https://registry.npmjs.org/@react-native-community%2fcli-types 67ms (cache revalidated)
+56 silly packumentCache full:https://registry.npmjs.org/@react-native-community%2fcli-types set size:533481 disposed:false
+57 silly placeDep ROOT @babel/preset-typescript@7.29.7 OK for: @rnx-kit/jest-preset@0.3.3 want: ^7.0.0
+58 silly placeDep ROOT @rnx-kit/tools-node@3.0.6 OK for: @rnx-kit/jest-preset@0.3.3 want: ^3.0.5
+59 silly placeDep ROOT @rnx-kit/tools-react-native@2.3.9 OK for: @rnx-kit/jest-preset@0.3.3 want: ^2.3.2
+60 silly fetch manifest @rnx-kit/types-node@^1.0.0
+61 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-node cache-miss
+62 silly fetch manifest @rnx-kit/tools-filesystem@^0.2.0
+63 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftools-filesystem cache-miss
+64 silly fetch manifest @rnx-kit/types-bundle-config@^1.0.1
+65 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-bundle-config cache-miss
+66 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftools-filesystem 681ms (cache miss)
+67 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftools-filesystem set size:undefined disposed:false
+68 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftypes-node 724ms (cache miss)
+69 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-node set size:undefined disposed:false
+70 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftypes-bundle-config 781ms (cache miss)
+71 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-bundle-config set size:undefined disposed:false
+72 silly placeDep ROOT @rnx-kit/types-node@1.0.1 OK for: @rnx-kit/tools-node@3.0.6 want: ^1.0.0
+73 silly fetch manifest @rnx-kit/types-kit-config@^2.0.0
+74 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-kit-config cache-miss
+75 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftypes-kit-config 803ms (cache miss)
+76 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-kit-config set size:undefined disposed:false
+77 silly fetch manifest memfs@>=4.0.0
+78 silly packumentCache full:https://registry.npmjs.org/memfs cache-miss
+79 http fetch GET 200 https://registry.npmjs.org/memfs 346ms (cache miss)
+80 silly packumentCache full:https://registry.npmjs.org/memfs set size:undefined disposed:false
+81 silly fetch manifest metro@>=0.83.0
+82 silly packumentCache full:https://registry.npmjs.org/metro cache-miss
+83 http fetch GET 200 https://registry.npmjs.org/metro 59ms (cache revalidated)
+84 silly packumentCache full:https://registry.npmjs.org/metro set size:750748 disposed:false
+85 silly placeDep ROOT @rnx-kit/tools-filesystem@0.2.0 OK for: @rnx-kit/tools-react-native@2.3.9 want: ^0.2.0
+86 silly placeDep ROOT @rnx-kit/types-bundle-config@1.0.1 OK for: @rnx-kit/tools-react-native@2.3.9 want: ^1.0.1
+87 silly fetch manifest @rnx-kit/types-metro-serializer-esbuild@^1.0.0
+88 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-metro-serializer-esbuild cache-miss
+89 silly fetch manifest @rnx-kit/types-plugin-cyclic-dependencies@^1.0.0
+90 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-plugin-cyclic-dependencies cache-miss
+91 silly fetch manifest @rnx-kit/types-plugin-duplicates-checker@^1.0.0
+92 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-plugin-duplicates-checker cache-miss
+93 silly fetch manifest @rnx-kit/types-plugin-typescript@^1.0.0
+94 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-plugin-typescript cache-miss
+95 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftypes-plugin-typescript 765ms (cache miss)
+96 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-plugin-typescript set size:undefined disposed:false
+97 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftypes-metro-serializer-esbuild 788ms (cache miss)
+98 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-metro-serializer-esbuild set size:undefined disposed:false
+99 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftypes-plugin-duplicates-checker 788ms (cache miss)
+100 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-plugin-duplicates-checker set size:undefined disposed:false
+101 http fetch GET 200 https://registry.npmjs.org/@rnx-kit%2ftypes-plugin-cyclic-dependencies 816ms (cache miss)
+102 silly packumentCache full:https://registry.npmjs.org/@rnx-kit%2ftypes-plugin-cyclic-dependencies set size:undefined disposed:false
+103 silly placeDep ROOT @rnx-kit/types-metro-serializer-esbuild@1.0.2 OK for: @rnx-kit/types-bundle-config@1.0.1 want: ^1.0.0
+104 silly placeDep ROOT @rnx-kit/types-plugin-cyclic-dependencies@1.0.0 OK for: @rnx-kit/types-bundle-config@1.0.1 want: ^1.0.0
+105 silly placeDep ROOT @rnx-kit/types-plugin-duplicates-checker@1.0.0 OK for: @rnx-kit/types-bundle-config@1.0.1 want: ^1.0.0
+106 silly placeDep ROOT @rnx-kit/types-plugin-typescript@1.0.0 OK for: @rnx-kit/types-bundle-config@1.0.1 want: ^1.0.0
+107 silly placeDep ROOT @rnx-kit/types-kit-config@2.0.0 OK for: @rnx-kit/types-node@1.0.1 want: ^2.0.0
+108 silly reify moves {}
+109 http cache @rnx-kit/types-kit-config@https://registry.npmjs.org/@rnx-kit/types-kit-config/-/types-kit-config-2.0.0.tgz 0ms (cache hit)
+110 http cache @rnx-kit/types-plugin-typescript@https://registry.npmjs.org/@rnx-kit/types-plugin-typescript/-/types-plugin-typescript-1.0.0.tgz 0ms (cache hit)
+111 http cache @rnx-kit/types-plugin-duplicates-checker@https://registry.npmjs.org/@rnx-kit/types-plugin-duplicates-checker/-/types-plugin-duplicates-checker-1.0.0.tgz 0ms (cache hit)
+112 http cache @rnx-kit/types-plugin-cyclic-dependencies@https://registry.npmjs.org/@rnx-kit/types-plugin-cyclic-dependencies/-/types-plugin-cyclic-dependencies-1.0.0.tgz 0ms (cache hit)
+113 http cache @rnx-kit/types-metro-serializer-esbuild@https://registry.npmjs.org/@rnx-kit/types-metro-serializer-esbuild/-/types-metro-serializer-esbuild-1.0.2.tgz 0ms (cache hit)
+114 http cache @rnx-kit/types-bundle-config@https://registry.npmjs.org/@rnx-kit/types-bundle-config/-/types-bundle-config-1.0.1.tgz 0ms (cache hit)
+115 http cache @rnx-kit/types-node@https://registry.npmjs.org/@rnx-kit/types-node/-/types-node-1.0.1.tgz 0ms (cache hit)
+116 http cache @rnx-kit/tools-filesystem@https://registry.npmjs.org/@rnx-kit/tools-filesystem/-/tools-filesystem-0.2.0.tgz 0ms (cache hit)
+117 http cache @rnx-kit/tools-react-native@https://registry.npmjs.org/@rnx-kit/tools-react-native/-/tools-react-native-2.3.9.tgz 0ms (cache hit)
+118 http cache @rnx-kit/tools-node@https://registry.npmjs.org/@rnx-kit/tools-node/-/tools-node-3.0.6.tgz 0ms (cache hit)
+119 http cache @rnx-kit/jest-preset@https://registry.npmjs.org/@rnx-kit/jest-preset/-/jest-preset-0.3.3.tgz 0ms (cache hit)
+120 http cache @babel/preset-typescript@https://registry.npmjs.org/@babel/preset-typescript/-/preset-typescript-7.29.7.tgz 0ms (cache hit)
+121 silly tarball no local data for @rnx-kit/types-kit-config@https://registry.npmjs.org/@rnx-kit/types-kit-config/-/types-kit-config-2.0.0.tgz. Extracting by manifest.
+122 silly tarball no local data for @rnx-kit/types-plugin-typescript@https://registry.npmjs.org/@rnx-kit/types-plugin-typescript/-/types-plugin-typescript-1.0.0.tgz. Extracting by manifest.
+123 silly tarball no local data for @rnx-kit/types-plugin-duplicates-checker@https://registry.npmjs.org/@rnx-kit/types-plugin-duplicates-checker/-/types-plugin-duplicates-checker-1.0.0.tgz. Extracting by manifest.
+124 silly tarball no local data for @rnx-kit/types-plugin-cyclic-dependencies@https://registry.npmjs.org/@rnx-kit/types-plugin-cyclic-dependencies/-/types-plugin-cyclic-dependencies-1.0.0.tgz. Extracting by manifest.
+125 silly tarball no local data for @rnx-kit/types-metro-serializer-esbuild@https://registry.npmjs.org/@rnx-kit/types-metro-serializer-esbuild/-/types-metro-serializer-esbuild-1.0.2.tgz. Extracting by manifest.
+126 silly tarball no local data for @rnx-kit/types-bundle-config@https://registry.npmjs.org/@rnx-kit/types-bundle-config/-/types-bundle-config-1.0.1.tgz. Extracting by manifest.
+127 silly tarball no local data for @rnx-kit/tools-filesystem@https://registry.npmjs.org/@rnx-kit/tools-filesystem/-/tools-filesystem-0.2.0.tgz. Extracting by manifest.
+128 silly tarball no local data for @rnx-kit/types-node@https://registry.npmjs.org/@rnx-kit/types-node/-/types-node-1.0.1.tgz. Extracting by manifest.
+129 silly tarball no local data for @rnx-kit/tools-react-native@https://registry.npmjs.org/@rnx-kit/tools-react-native/-/tools-react-native-2.3.9.tgz. Extracting by manifest.
+130 silly tarball no local data for @rnx-kit/tools-node@https://registry.npmjs.org/@rnx-kit/tools-node/-/tools-node-3.0.6.tgz. Extracting by manifest.
+131 silly tarball no local data for @rnx-kit/jest-preset@https://registry.npmjs.org/@rnx-kit/jest-preset/-/jest-preset-0.3.3.tgz. Extracting by manifest.
+132 silly tarball no local data for @babel/preset-typescript@https://registry.npmjs.org/@babel/preset-typescript/-/preset-typescript-7.29.7.tgz. Extracting by manifest.
+133 http fetch GET 200 https://registry.npmjs.org/@babel/preset-typescript/-/preset-typescript-7.29.7.tgz 181ms (cache miss)
+134 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/types-plugin-duplicates-checker/-/types-plugin-duplicates-checker-1.0.0.tgz 348ms (cache miss)
+135 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/types-plugin-cyclic-dependencies/-/types-plugin-cyclic-dependencies-1.0.0.tgz 352ms (cache miss)
+136 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/types-plugin-typescript/-/types-plugin-typescript-1.0.0.tgz 377ms (cache miss)
+137 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/types-metro-serializer-esbuild/-/types-metro-serializer-esbuild-1.0.2.tgz 583ms (cache miss)
+138 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/tools-node/-/tools-node-3.0.6.tgz 693ms (cache miss)
+139 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/types-node/-/types-node-1.0.1.tgz 701ms (cache miss)
+140 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/tools-filesystem/-/tools-filesystem-0.2.0.tgz 704ms (cache miss)
+141 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/jest-preset/-/jest-preset-0.3.3.tgz 794ms (cache miss)
+142 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/types-kit-config/-/types-kit-config-2.0.0.tgz 888ms (cache miss)
+143 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/types-bundle-config/-/types-bundle-config-1.0.1.tgz 964ms (cache miss)
+144 http fetch GET 200 https://registry.npmjs.org/@rnx-kit/tools-react-native/-/tools-react-native-2.3.9.tgz 997ms (cache miss)
+145 silly ADD node_modules/@rnx-kit/types-kit-config
+146 silly ADD node_modules/@rnx-kit/types-plugin-typescript
+147 silly ADD node_modules/@rnx-kit/types-plugin-duplicates-checker
+148 silly ADD node_modules/@rnx-kit/types-plugin-cyclic-dependencies
+149 silly ADD node_modules/@rnx-kit/types-metro-serializer-esbuild
+150 silly ADD node_modules/@rnx-kit/types-bundle-config
+151 silly ADD node_modules/@rnx-kit/tools-filesystem
+152 silly ADD node_modules/@rnx-kit/types-node
+153 silly ADD node_modules/@rnx-kit/tools-react-native
+154 silly ADD node_modules/@rnx-kit/tools-node
+155 silly ADD node_modules/@babel/preset-typescript
+156 silly ADD node_modules/@rnx-kit/jest-preset
+157 verbose cwd C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe
+158 verbose os Windows_NT 10.0.26300
+159 verbose node v24.16.0
+160 verbose npm  v11.13.0
+161 verbose exit 0
+162 info ok

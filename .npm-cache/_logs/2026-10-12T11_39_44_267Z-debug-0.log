@@ -1,0 +1,40 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe\.npmrc
+5 silly config load:file:C:\Users\samue\.npmrc
+6 silly config load:file:C:\Users\samue\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install @fontsource/nunito@5.3.0 @fontsource/comic-neue@5.3.0
+8 verbose argv "install" "@fontsource/nunito@5.3.0" "@fontsource/comic-neue@5.3.0" "--cache" "..\\.npm-cache" "--no-audit" "--no-fund"
+9 verbose logfile logs-max:10 dir:C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_39_44_267Z-
+10 verbose logfile C:\Users\samue\OneDrive\Desktop\New folder\.npm-cache\_logs\2026-10-12T11_39_44_267Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly logfile done cleaning log files
+14 silly idealTree buildDeps
+15 silly fetch manifest @fontsource/nunito@5.3.0
+16 silly packumentCache full:https://registry.npmjs.org/@fontsource%2fnunito cache-miss
+17 http cache https://registry.npmjs.org/@fontsource%2fnunito 244ms (cache hit)
+18 silly packumentCache full:https://registry.npmjs.org/@fontsource%2fnunito set size:105035 disposed:false
+19 silly fetch manifest @fontsource/comic-neue@5.3.0
+20 silly packumentCache full:https://registry.npmjs.org/@fontsource%2fcomic-neue cache-miss
+21 http cache https://registry.npmjs.org/@fontsource%2fcomic-neue 5ms (cache hit)
+22 silly packumentCache full:https://registry.npmjs.org/@fontsource%2fcomic-neue set size:97487 disposed:false
+23 silly placeDep ROOT @fontsource/comic-neue@5.3.0 OK for: whychooseme@0.0.1 want: 5.3.0
+24 silly placeDep ROOT @fontsource/nunito@5.3.0 OK for: whychooseme@0.0.1 want: 5.3.0
+25 silly reify moves {}
+26 http cache @fontsource/comic-neue@https://registry.npmjs.org/@fontsource/comic-neue/-/comic-neue-5.3.0.tgz 0ms (cache hit)
+27 http cache @fontsource/nunito@https://registry.npmjs.org/@fontsource/nunito/-/nunito-5.3.0.tgz 0ms (cache hit)
+28 silly tarball no local data for @fontsource/comic-neue@https://registry.npmjs.org/@fontsource/comic-neue/-/comic-neue-5.3.0.tgz. Extracting by manifest.
+29 silly tarball no local data for @fontsource/nunito@https://registry.npmjs.org/@fontsource/nunito/-/nunito-5.3.0.tgz. Extracting by manifest.
+30 http fetch GET 200 https://registry.npmjs.org/@fontsource/comic-neue/-/comic-neue-5.3.0.tgz 723ms (cache miss)
+31 http fetch GET 200 https://registry.npmjs.org/@fontsource/nunito/-/nunito-5.3.0.tgz 874ms (cache miss)
+32 silly ADD node_modules/@fontsource/nunito
+33 silly ADD node_modules/@fontsource/comic-neue
+34 verbose cwd C:\Users\samue\OneDrive\Desktop\New folder\WhyChooseMe
+35 verbose os Windows_NT 10.0.26300
+36 verbose node v24.16.0
+37 verbose npm  v11.13.0
+38 verbose exit 0
+39 info ok
