@@ -58,6 +58,19 @@ export type Finder = { name: string; email: string; taluka: Taluka };
 export type RequestPost = { id: string; title: string; category: string; details: string; taluka: Taluka; createdAt: number; finder: string; finderId?: string; demo?: boolean };
 export type ChatMessage = { id: string; freelancerId: string; body: string; from: 'finder' | 'freelancer'; time: number };
 
+export const walkthroughFinder: Finder = { name: 'Rhea', email: 'preview@whychooseme.local', taluka: 'Tiswadi' };
+export const walkthroughRequests: RequestPost[] = [
+  { id: 'preview-own-brief', title: 'Photos for a family celebration', category: 'photography', details: 'Looking for warm, candid photos of a small celebration in Panaji next weekend.', taluka: 'Tiswadi', createdAt: Date.now() - 86400000, finder: 'You', finderId: 'preview-finder', demo: true },
+  { id: 'preview-design-brief', title: 'A fresh look for my café', category: 'design', details: 'Need a friendly logo and a few social templates for a new café in Mapusa.', taluka: 'Bardez', createdAt: Date.now() - 172800000, finder: 'Nisha', demo: true },
+  { id: 'preview-video-brief', title: 'Edit a short event reel', category: 'video', details: 'I have clips from our community event and want a lively 30-second reel.', taluka: 'Tiswadi', createdAt: Date.now() - 259200000, finder: 'Dev', demo: true },
+];
+export const walkthroughMessages: ChatMessage[] = [
+  { id: 'preview-chat-1', freelancerId: 'arjun', body: 'Hi! Could you help me edit a short reel for an event?', from: 'finder', time: Date.now() - 3600000 },
+  { id: 'preview-chat-2', freelancerId: 'arjun', body: 'Absolutely. Send me the clips and the style you have in mind.', from: 'freelancer', time: Date.now() - 3300000 },
+  { id: 'preview-chat-3', freelancerId: 'meera', body: 'I love your work. Are you available for a café logo?', from: 'finder', time: Date.now() - 7200000 },
+  { id: 'preview-inquiry-1', freelancerId: 'preview-finder', body: 'Hi Tanya! Are you available for a family celebration next weekend?', from: 'finder', time: Date.now() - 5400000 },
+];
+
 export function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
   const toRad = (value: number) => value * Math.PI / 180;
   const dLat = toRad(b.lat - a.lat);

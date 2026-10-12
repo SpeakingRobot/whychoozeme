@@ -16,7 +16,8 @@ export function Portrait({ index, height, radius = 16, imageUrl, name }: { index
 }
 
 export function Button({ children, onPress, outline = false, style, textStyle, disabled = false }: { children: React.ReactNode; onPress?: () => void; outline?: boolean; style?: any; textStyle?: any; disabled?: boolean }) {
-  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={({ pressed }) => [{ minHeight: 42, paddingHorizontal: 20, borderRadius: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: outline ? '#fff' : color.purple, borderWidth: outline ? 1.4 : 0, borderColor: color.purple, opacity: disabled ? .5 : pressed ? .82 : 1, shadowColor: outline ? 'transparent' : color.purple, shadowOpacity: outline ? 0 : .16, shadowRadius: 7, elevation: outline ? 0 : 2 }, style]}>
+  const [hovered, setHovered] = useState(false);
+  return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} style={({ pressed }) => [{ minHeight: 42, paddingHorizontal: 20, borderRadius: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: outline ? '#fff' : color.purple, borderWidth: outline ? 1.4 : 0, borderColor: color.purple, opacity: disabled ? .5 : pressed ? .82 : 1, shadowColor: outline ? 'transparent' : color.purple, shadowOpacity: outline ? 0 : hovered ? .23 : .16, shadowRadius: hovered ? 11 : 7, elevation: outline ? 0 : hovered ? 3 : 2, transform: [{ translateY: hovered && !disabled ? -2 : 0 }] }, Platform.OS === 'web' ? { transition: 'transform 170ms ease, box-shadow 170ms ease, opacity 170ms ease' } as any : null, style]}>
     <Text style={[{ color: outline ? color.purple : '#fff', fontWeight: '800', fontSize: 14, fontFamily: 'Nunito' }, textStyle]}>{children}</Text>
   </Pressable>;
 }
