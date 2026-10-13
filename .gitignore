@@ -78,6 +78,7 @@ yarn-error.log
 
 # testing
 /coverage
+/.jest-cache/
 
 # Yarn
 .yarn/*

@@ -1,6 +1,7 @@
 export const MAX_PHOTOS = 20;
 export const MAX_PHOTO_BYTES = 300 * 1024;
 export const MAX_VIDEO_BYTES = 14 * 1024 * 1024;
+export const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
 
 type PickedFile = { type: string; size: number };
 
@@ -16,4 +17,10 @@ export function videoUploadError(file: PickedFile): string | null {
 
 export function hasExactVideoRatio(width: number, height: number): boolean {
   return width > 0 && height > 0 && width * 9 === height * 16;
+}
+
+export function documentUploadError(files: PickedFile[], currentBytes: number): string | null {
+  if (!files.length || files.some(file => file.type.startsWith('image/') || file.type.startsWith('video/'))) return 'Choose PDF or text documents, not images or videos.';
+  if (currentBytes + files.reduce((sum, file) => sum + file.size, 0) > MAX_DOCUMENT_BYTES) return 'All documents together must stay within 15 MB.';
+  return null;
 }
