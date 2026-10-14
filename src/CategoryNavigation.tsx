@@ -31,33 +31,27 @@ function CategoryButton({ category, onPress }: { category: Category; onPress: ()
   </Pressable>;
 }
 
-function NavTrigger({ label, open, onPress }: { label: string; open: boolean; onPress: () => void }) {
+function NavTrigger({ label, open, onPress, dense = false }: { label: string; open: boolean; onPress: () => void; dense?: boolean }) {
   const [hovered, setHovered] = useState(false);
   const active = open || hovered;
-  return <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={onPress} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} style={{ minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 11, borderRadius: 11, borderWidth: 1, borderColor: active ? '#d9c5ff' : 'transparent', backgroundColor: active ? '#f8f3ff' : 'transparent', transform: [{ translateY: hovered ? -1 : 0 }, { scale: hovered ? 1.012 : 1 }], ...(Platform.OS === 'web' ? { backgroundImage: active ? 'linear-gradient(125deg, rgba(247,239,255,.96), rgba(255,249,252,.96))' : 'none', boxShadow: hovered ? '0 3px 7px rgba(113,58,240,.08)' : 'none', transition: 'transform 210ms cubic-bezier(.2,.85,.2,1), border-color 210ms ease, background-color 210ms ease, box-shadow 210ms ease', cursor: 'pointer' } as any : {}) }}><Text style={[labelStyle, { color: active ? color.purple : color.ink }]}>{label}</Text><View style={{ transform: [{ translateY: hovered && !open ? 1 : 0 }] }}><ChevronDown size={14} color={active ? color.purple : color.muted} open={open} /></View></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={onPress} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} style={{ minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: dense ? 3 : 6, paddingHorizontal: dense ? 6 : 11, borderRadius: 11, borderWidth: 1, borderColor: active ? '#d9c5ff' : 'transparent', backgroundColor: active ? '#f8f3ff' : 'transparent', transform: [{ translateY: hovered ? -1 : 0 }, { scale: hovered ? 1.012 : 1 }], ...(Platform.OS === 'web' ? { backgroundImage: active ? 'linear-gradient(125deg, rgba(247,239,255,.96), rgba(255,249,252,.96))' : 'none', boxShadow: hovered ? '0 3px 7px rgba(113,58,240,.08)' : 'none', transition: 'transform 210ms cubic-bezier(.2,.85,.2,1), border-color 210ms ease, background-color 210ms ease, box-shadow 210ms ease', cursor: 'pointer' } as any : {}) }}><Text style={[labelStyle, { color: active ? color.purple : color.ink, fontSize: dense ? 11 : 13 }]}>{label}</Text><View style={{ transform: [{ translateY: hovered && !open ? 1 : 0 }] }}><ChevronDown size={dense ? 12 : 14} color={active ? color.purple : color.muted} open={open} /></View></Pressable>;
 }
 
-function BrowseButton({ label, onPress }: { label: string; onPress: () => void }) {
-  const [hovered, setHovered] = useState(false);
-  return <Pressable accessibilityRole="button" onPress={onPress} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} style={({ pressed }) => ({ minHeight: 42, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 11, backgroundColor: pressed ? '#e9dcff' : hovered ? '#f3edff' : 'transparent', transform: [{ translateX: hovered ? 3 : 0 }], ...hoverMotion })}><Text style={[labelStyle, { color: hovered ? color.purple : color.ink }]}>{label}</Text></Pressable>;
-}
-
-export function DesktopCategoryNavigation({ categories, onCategory, onAll, onMap, onRequests }: Props) {
+export function DesktopCategoryNavigation({ categories, onCategory, visibleKeys, inline = false, dense = false }: Pick<Props, 'categories' | 'onCategory'> & { visibleKeys?: string[]; inline?: boolean; dense?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
-  const items = [...groups, { key: 'all', label: 'All skills', ids: categories.filter(item => item.id !== 'all').map(item => item.id) }];
-  return <View style={{ borderTopWidth: 1, borderTopColor: '#f3eff0', borderBottomWidth: 1, borderBottomColor: '#f3eff0', backgroundColor: '#fff', zIndex: 20 }}>
-    <View style={{ maxWidth: 1000, width: '100%', alignSelf: 'center', paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 22, minHeight: 52 }}>
+  const assigned = new Set(groups.flatMap(group => group.ids));
+  const ungrouped = categories.filter(item => item.id !== 'all' && !assigned.has(item.id)).map(item => item.id);
+  const items = [...groups, ...(ungrouped.length ? [{ key: 'more', label: 'More specialties', ids: ungrouped }] : [])].filter(item => !visibleKeys || visibleKeys.includes(item.key));
+  return <View style={inline ? { flex: 1, minWidth: 0, zIndex: 20 } : { borderTopWidth: 1, borderTopColor: '#f3eff0', backgroundColor: '#fff', zIndex: 20 }}>
+    <View style={{ maxWidth: inline ? undefined : 1000, width: '100%', alignSelf: 'center', paddingHorizontal: inline ? 0 : dense ? 6 : 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: inline ? 3 : dense ? 5 : 16, minHeight: inline ? 44 : 48 }}>
       {items.map(group => {
         const choices = group.ids.map(id => categories.find(item => item.id === id)).filter((item): item is Category => !!item);
         if (!choices.length) return null;
         return <View key={group.key} style={{ position: 'relative', zIndex: open === group.key ? 30 : 1 }}>
-          <NavTrigger label={group.label} open={open === group.key} onPress={() => setOpen(open === group.key ? null : group.key)} />
-          {open === group.key && <View style={{ position: 'absolute', top: 51, left: 0, width: 250, maxHeight: 370, backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, borderRadius: 16, padding: 7, shadowColor: '#211847', shadowOpacity: .18, shadowRadius: 15, elevation: 8, ...motion }}><ScrollView>{choices.map(item => <CategoryButton key={item.id} category={item} onPress={() => { setOpen(null); onCategory(item); }} />)}</ScrollView></View>}
+          <NavTrigger label={group.label} open={open === group.key} onPress={() => setOpen(open === group.key ? null : group.key)} dense={dense} />
+          {open === group.key && <View style={{ position: 'absolute', top: inline ? 43 : 47, left: 0, width: 250, maxHeight: 370, backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, borderRadius: 16, padding: 7, shadowColor: '#211847', shadowOpacity: .18, shadowRadius: 15, elevation: 8, ...motion }}><ScrollView>{choices.map(item => <CategoryButton key={item.id} category={item} onPress={() => { setOpen(null); onCategory(item); }} />)}</ScrollView></View>}
         </View>;
       })}
-      <View style={{ position: 'relative', zIndex: open === 'browse' ? 30 : 1 }}><NavTrigger label="Browse" open={open === 'browse'} onPress={() => setOpen(open === 'browse' ? null : 'browse')} />
-        {open === 'browse' && <View style={{ position: 'absolute', top: 51, right: 0, width: 230, backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, borderRadius: 16, padding: 7, shadowColor: '#211847', shadowOpacity: .18, shadowRadius: 15, elevation: 8, ...motion }}>{[['All creatives', onAll], ['Explore map', onMap], ['Browse requirements', onRequests]].map(([name, action]) => <BrowseButton key={name as string} label={name as string} onPress={() => { setOpen(null); (action as () => void)(); }} />)}</View>}
-      </View>
     </View>
   </View>;
 }

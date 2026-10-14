@@ -5,7 +5,7 @@ begin
   select string_agg(name, ', ') into missing from (
     select unnest(array['admins','finder_profiles','freelancer_profiles','freelancer_contacts',
       'requests','applications','chat_messages','notifications','freelancer_inquiries',
-      'inquiry_attachments','hiring_requests','agreements','portfolio_media']) as name
+      'inquiry_attachments','hiring_requests','agreements','portfolio_media','freelancer_presence']) as name
   ) expected where not exists (select 1 from pg_tables t where t.schemaname='public' and t.tablename=expected.name);
   if missing is not null then raise exception 'Missing public tables: %', missing; end if;
 
@@ -32,6 +32,10 @@ begin
   if not exists(select 1 from pg_policies where schemaname='public' and tablename='freelancer_profiles'
       and policyname='active_account_gate' and permissive='RESTRICTIVE') then
     raise exception 'Suspended account gate missing';
+  end if;
+  if not exists(select 1 from pg_policies where schemaname='public' and tablename='freelancer_presence'
+      and policyname='active_account_gate' and permissive='RESTRICTIVE') then
+    raise exception 'Suspended account gate missing from freelancer presence';
   end if;
   if not exists(select 1 from pg_trigger where tgname='hiring_requires_approved_inquiry' and not tgisinternal) then
     raise exception 'Hiring inquiry trigger missing';

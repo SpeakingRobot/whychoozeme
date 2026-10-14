@@ -28,6 +28,10 @@ export function ChatIcon({ color = '#111638', size = 23 }: { color?: string; siz
   return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"><Path d="M20.5 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-3.4-.7L3.5 21l1.6-4.8A8.5 8.5 0 1 1 20.5 11.5Z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" /><Path d="M8 11.5h8M8 14.6h5.2" stroke={color} strokeWidth={1.9} strokeLinecap="round" /></Svg>;
 }
 
+export function InquiryIcon({ color = '#fff', size = 17 }: { color?: string; size?: number }) {
+  return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"><Path d="m3.5 11.4 16.8-7.3-5.7 16.2-3.2-6.6-7.9-2.3Z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" /><Path d="m11.4 13.7 8.9-9.6" stroke={color} strokeWidth={1.8} strokeLinecap="round" /></Svg>;
+}
+
 export function CalendarIcon({ color = '#713af0', size = 18 }: { color?: string; size?: number }) {
   return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"><Path d="M4 6.5h16v13H4v-13ZM4 10h16M8 3.5v5M16 3.5v5M8 14h2M12 14h2M16 14h2M8 17h2M12 17h2" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" /></Svg>;
 }

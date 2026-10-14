@@ -41,7 +41,7 @@ export type Freelancer = {
   imageUrl?: string;
   premium?: boolean;
   demo?: boolean;
-  online?: boolean;
+  lastActiveAt?: string;
 };
 
 export type Finder = { name: string; email: string; taluka: Taluka };

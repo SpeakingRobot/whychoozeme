@@ -3,6 +3,8 @@ import { Pressable, Text, View } from 'react-native';
 import { Freelancer } from './data';
 import { Button, color, Heading, Portrait } from './UI';
 import { CalendarIcon } from './icons';
+import InquiryActionButton from './InquiryActionButton';
+import PresenceStatus from './PresenceStatus';
 
 type Props = {
   profile: Freelancer;
@@ -37,6 +39,7 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
             </View>
             <Text style={[text, { color: color.muted, fontSize: 14 }]}>⌖ {profile.place}, Goa</Text>
           </View>
+          <View style={{ marginTop: 6 }}><PresenceStatus person={profile} /></View>
         </View>
         <View style={{ backgroundColor: '#f7f0ff', borderLeftWidth: 4, borderLeftColor: color.purple, borderRadius: 16, paddingHorizontal: narrow ? 15 : 19, paddingVertical: 13 }}>
           <Text style={[text, { fontSize: narrow ? 15 : 17, lineHeight: narrow ? 23 : 26, fontWeight: '700' }]}>“{profile.why}”</Text>
@@ -53,7 +56,7 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
         <Button outline icon={<CalendarIcon color={color.purple} size={16} />} onPress={onAvailability} style={{ minHeight: 40 }} textStyle={{ fontSize: 12 }}>See availability</Button>
       </View>
       <View style={{ flexDirection: 'row', gap: 9 }}>
-        <Button onPress={onChat} style={{ minHeight: 42 }}>{chatReady ? 'Open chat' : 'Inquire'}</Button>
+        {chatReady ? <Button onPress={onChat} style={{ minHeight: 42 }}>Open chat</Button> : <InquiryActionButton name={profile.name} onPress={onChat} />}
         <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Remove saved profile' : 'Save profile'} onPress={onSave} style={{ width: 42, height: 42, borderRadius: 22, backgroundColor: '#f4edff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.purple, fontSize: 24 }}>{saved ? '♥' : '♡'}</Text></Pressable>
       </View>
     </View>

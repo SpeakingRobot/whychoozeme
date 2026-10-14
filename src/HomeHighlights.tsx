@@ -1,60 +1,65 @@
-import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Platform, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Category, Freelancer, RequestPost } from './data';
 import { color, Heading, Portrait } from './UI';
+import PresenceStatus from './PresenceStatus';
 
 type Kind = 'standout' | 'hiring' | 'categories' | 'discover';
 type Props = {
-  kind: Kind;
-  compact: boolean;
-  people: Freelancer[];
-  requests: RequestPost[];
-  categories: Category[];
-  onProfile: (person: Freelancer) => void;
-  onCategory: (category: Category) => void;
-  onRequests: () => void;
+  kind: Kind; compact: boolean; people: Freelancer[]; requests: RequestPost[]; categories: Category[];
+  onProfile: (person: Freelancer) => void; onCategory: (category: Category) => void; onRequests: () => void;
 };
 type Highlight = { key: string; eyebrow: string; title: string; detail: string; icon: string; person?: Freelancer; onPress: () => void };
 
+function HighlightCard({ card, width, accent, portraitSize }: { card: Highlight; width: any; accent: string; portraitSize: number }) {
+  const [hovered, setHovered] = useState(false);
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${card.title}, ${card.detail}`} onPress={card.onPress} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} onFocus={() => setHovered(true)} onBlur={() => setHovered(false)} style={[{
+    width, minHeight: card.person ? portraitSize + 24 : 188, borderRadius: 18, borderWidth: 1,
+    borderColor: hovered ? '#cfbafd' : '#eee8e7', backgroundColor: '#fffdfb',
+    padding: 12, justifyContent: 'space-between',
+    shadowColor: '#6a5471', shadowOpacity: hovered ? .13 : .045,
+    shadowRadius: hovered ? 13 : 7, elevation: hovered ? 3 : 1,
+    transform: [{ translateY: hovered ? -3 : 0 }],
+  }, Platform.OS === 'web' ? { cursor: 'pointer', transition: 'transform 210ms ease, border-color 210ms ease, box-shadow 210ms ease' } as any : null]}>
+    {card.person ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+      <View style={{ width: portraitSize, height: portraitSize, padding: 4, borderRadius: 14, borderWidth: 1, borderColor: '#eee7e4', backgroundColor: '#fff', shadowColor: '#30253c', shadowOpacity: .1, shadowRadius: 8 }}><Portrait index={card.person.image} imageUrl={card.person.imageUrl} name={card.person.name} height={portraitSize - 10} radius={10} /></View>
+      <View style={{ flex: 1, minWidth: 0 }}><Text style={{ color: accent, fontFamily: 'Nunito', fontSize: 10, fontWeight: '900', letterSpacing: .8 }}>{card.eyebrow}</Text><Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: portraitSize <= 82 ? 15 : 17, fontWeight: '900', marginTop: 3, lineHeight: portraitSize <= 82 ? 18 : 21 }}>{card.title}</Text><View style={{ alignSelf: 'flex-start', maxWidth: '100%', backgroundColor: '#fff0d9', borderRadius: 12, paddingHorizontal: 7, paddingVertical: 3, marginTop: 8 }}><Text style={{ color: '#8c541b', fontFamily: 'Nunito', fontSize: 10, fontWeight: '900' }}>✦ {card.person.role}</Text></View><Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 11, marginTop: 5 }}>⌖ {card.person.place}</Text><PresenceStatus person={card.person} compact /></View>
+    </View> : <>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}><View style={[{ width: 66, height: 66, borderRadius: 19, backgroundColor: '#f6edff', alignItems: 'center', justifyContent: 'center', transform: [{ scale: hovered ? 1.09 : 1 }, { rotate: hovered ? '6deg' : '0deg' }] }, Platform.OS === 'web' ? { transition: 'transform 260ms cubic-bezier(.2,.85,.2,1)' } as any : null]}><View style={Platform.OS === 'web' ? { animation: 'wcm-highlight-icon 4s ease-in-out infinite' } as any : undefined}><Text style={{ fontSize: 30 }}>{card.icon}</Text></View></View><Text style={{ color: accent, fontFamily: 'Nunito', fontSize: 10, fontWeight: '900', letterSpacing: .9 }}>{card.eyebrow}</Text></View>
+      <View style={{ marginTop: 12 }}><Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 20, fontWeight: '900' }} numberOfLines={1}>{card.title}</Text><Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12, marginTop: 4 }}>{card.detail}</Text></View>
+      <Text style={{ color: accent, fontFamily: 'Nunito', fontSize: 12, fontWeight: '900', marginTop: 12 }}>Explore  ↗</Text>
+    </>}
+  </Pressable>;
+}
+
 export default function HomeHighlights({ kind, compact, people, requests, categories, onProfile, onCategory, onRequests }: Props) {
+  const { width: screenWidth } = useWindowDimensions();
   const categoryFor = (id: string) => categories.find(item => item.id === id) || { id, label: id.replace(/-/g, ' '), icon: '✦' };
   const cards: Highlight[] = [];
   let heading = '', subtitle = '';
-
   if (kind === 'standout' || kind === 'discover') {
     const picks = kind === 'standout'
       ? [...people].sort((a, b) => b.reviews - a.reviews || b.rating - a.rating).slice(0, 5)
       : [...people].sort((a, b) => a.reviews - b.reviews || a.name.localeCompare(b.name)).slice(0, 3);
     heading = kind === 'standout' ? 'People making an impression' : 'Discover someone new';
     subtitle = kind === 'standout' ? 'A closer look at creatives people keep coming back to.' : 'More skills and stories from around Goa.';
-    picks.forEach((person, index) => cards.push({
-      key: person.id, eyebrow: kind === 'standout' ? `SPOTLIGHT ${index + 1}` : categoryFor(person.category).label.toUpperCase(),
-      title: person.name, detail: `${person.role} · ${person.place}`, icon: '✦', person, onPress: () => onProfile(person),
-    }));
+    picks.forEach((person, index) => cards.push({ key: person.id, eyebrow: kind === 'standout' ? `SPOTLIGHT 0${index + 1}` : categoryFor(person.category).label.toUpperCase(), title: person.name, detail: `${person.role} · ${person.place}`, icon: '✦', person, onPress: () => onProfile(person) }));
   } else {
     const counts = new Map<string, number>();
     (kind === 'hiring' ? requests.map(item => item.category) : people.map(item => item.category)).forEach(id => counts.set(id, (counts.get(id) || 0) + 1));
-    const picks = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3);
+    const picks = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, kind === 'categories' ? 6 : 3);
     heading = kind === 'hiring' ? 'Popular hiring right now' : 'Explore by specialty';
     subtitle = kind === 'hiring' ? 'See the kinds of briefs Finders are sharing.' : 'Follow the work that catches your eye.';
-    picks.forEach(([id, count]) => {
-      const category = categoryFor(id);
-      cards.push({ key: id, eyebrow: kind === 'hiring' ? `${count} ${count === 1 ? 'BRIEF' : 'BRIEFS'}` : `${count} ${count === 1 ? 'CREATIVE' : 'CREATIVES'}`,
-        title: category.label, detail: kind === 'hiring' ? 'Explore current requirements →' : 'Meet people in this specialty →',
-        icon: category.icon, onPress: kind === 'hiring' ? onRequests : () => onCategory(category) });
-    });
+    picks.forEach(([id, count]) => { const category = categoryFor(id); cards.push({ key: id, eyebrow: kind === 'hiring' ? `${count} ${count === 1 ? 'BRIEF' : 'BRIEFS'}` : `${count} ${count === 1 ? 'CREATIVE' : 'CREATIVES'}`, title: category.label, detail: kind === 'hiring' ? 'Explore current requirements.' : 'Meet people in this specialty.', icon: category.icon, onPress: kind === 'hiring' ? onRequests : () => onCategory(category) }); });
   }
-
   if (!cards.length) return null;
-  return <View style={{ marginTop: 28, paddingVertical: 20, paddingHorizontal: compact ? 14 : 22, backgroundColor: kind === 'hiring' ? '#fff1e8' : '#f5efff', borderRadius: 24 }}>
+  const cardWidth = compact ? '100%' : screenWidth < 1100 ? '47.5%' : kind === 'standout' ? (screenWidth >= 1300 ? '18.4%' : '30.6%') : '30.6%';
+  const portraitSize = compact ? 88 : screenWidth < 1100 ? 88 : kind === 'standout' && screenWidth >= 1300 ? 82 : 110;
+  const accent = kind === 'hiring' ? '#c56b36' : color.purple;
+  return <View style={{ marginTop: 30, paddingVertical: 23, paddingHorizontal: compact ? 14 : 22, backgroundColor: '#fff', borderRadius: 24, borderWidth: 1, borderColor: '#ede8e7', shadowColor: '#766470', shadowOpacity: .08, shadowRadius: 20, elevation: 2 }}>
+    <View style={{ width: 35, height: 3, borderRadius: 3, backgroundColor: accent, marginBottom: 10 }} />
     <Heading size={compact ? 21 : 25}>{heading} <Text style={{ color: color.coral }}>✦</Text></Heading>
-    <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 13, marginTop: 3, marginBottom: 15 }}>{subtitle}</Text>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 11 }}>{cards.map(card => <Pressable key={card.key} accessibilityRole="button" accessibilityLabel={`${card.title}, ${card.detail}`} onPress={card.onPress} style={{ width: compact ? '100%' : kind === 'standout' ? '18%' : '31%', flexGrow: 1, minWidth: kind === 'standout' ? 165 : 200, minHeight: 135, backgroundColor: '#fff', borderRadius: 18, borderWidth: 1, borderColor: color.line, padding: 16, justifyContent: 'space-between' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>{card.person ? <View style={{ width: 58, height: 58 }}><Portrait index={card.person.image} imageUrl={card.person.imageUrl} name={card.person.name} height={58} radius={13} /></View> : <View style={{ width: 58, height: 58, borderRadius: 15, backgroundColor: '#f2e6ff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 27 }}>{card.icon}</Text></View>}<View style={{ flex: 1 }}><Text style={{ color: color.purple, fontFamily: 'Nunito', fontSize: 10, fontWeight: '900', letterSpacing: 1 }}>{card.eyebrow}</Text><Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 18, fontWeight: '900', marginTop: 3 }} numberOfLines={1}>{card.title}</Text></View></View>
-      {card.person ? <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 7, marginTop: 13 }}>
-        <View style={{ backgroundColor: '#fff1d9', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4 }}><Text style={{ color: '#865018', fontFamily: 'Nunito', fontSize: 12, fontWeight: '900' }}>✦ {card.person.role}</Text></View>
-        <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12 }}>⌖ {card.person.place}</Text>
-      </View> : <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 13, marginTop: 13 }}>{card.detail}</Text>}
-    </Pressable>)}</View>
+    <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 13, marginTop: 3, marginBottom: 18 }}>{subtitle}</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 11 }}>{cards.map(card => <HighlightCard key={card.key} card={card} width={cardWidth} accent={accent} portraitSize={portraitSize} />)}</View>
   </View>;
 }

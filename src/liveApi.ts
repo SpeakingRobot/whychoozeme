@@ -40,22 +40,33 @@ export async function getFinder(userId: string) {
 }
 export async function getFreelancers(): Promise<Freelancer[]> {
   const client = assertDb();
-  const [profileResult, sampleResult, premiumResult] = await Promise.all([
+  const [profileResult, sampleResult, premiumResult, presenceResult] = await Promise.all([
     client.from('freelancer_profiles').select('user_id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,image_url,created_at').order('created_at', { ascending: false }),
     client.from('sample_freelancers').select('id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,card_line,image_index,rating,review_count,sort_order').order('sort_order', { ascending: true }),
     client.from('user_entitlements').select('user_id').eq('premium', true),
+    client.from('freelancer_presence').select('freelancer_id,last_active_at'),
   ]);
   const rows = unwrap(profileResult), samples = unwrap(sampleResult);
   const premiumUsers = new Set((unwrap(premiumResult) || []).map((row: any) => row.user_id));
+  // The directory remains usable while the presence migration is being applied.
+  const activity = new Map((presenceResult.data || []).map((row: any) => [row.freelancer_id, row.last_active_at]));
+  // Sample-only states disappear with the sample rows; real accounts always use tracked activity.
+  const sampleActivityMinutes = new Map([[1, 0], [2, 18], [5, 145], [7, 0]]);
+  const sampledAt = Date.now();
   const realPeople = (rows || []).map((row: any) => ({ id: row.user_id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality || row.taluka,
     lat: row.latitude, lon: row.longitude, rating: 0, reviews: 0, distance: 'Nearby',
-    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id) }));
+    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id), lastActiveAt: activity.get(row.user_id) }));
   const samplePeople = (samples || []).map((row: any) => ({ id: row.id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality,
     lat: row.latitude, lon: row.longitude, rating: Number(row.rating), reviews: row.review_count, distance: row.taluka,
-    line: row.card_line, why: row.why_me, work: row.portfolio || [], image: row.image_index, demo: true }));
+    line: row.card_line, why: row.why_me, work: row.portfolio || [], image: row.image_index, demo: true,
+    lastActiveAt: sampleActivityMinutes.has(row.sort_order) ? new Date(sampledAt - sampleActivityMinutes.get(row.sort_order)! * 60_000).toISOString() : undefined }));
   return [...realPeople, ...samplePeople];
+}
+export async function markFreelancerActive(userId: string) {
+  const result = await assertDb().from('freelancer_presence').upsert({ freelancer_id: userId }, { onConflict: 'freelancer_id' });
+  if (result.error) throw new Error(result.error.message);
 }
 export async function getCategories(): Promise<Category[]> {
   const rows = unwrap(await assertDb().from('categories').select('slug,label,icon').eq('active', true).order('label')) || [];
