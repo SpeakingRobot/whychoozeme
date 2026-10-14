@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, PanResponder, Platform, Pressable, Text, View } from 'react-native';
+import { Image, PanResponder, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { distanceKm, Freelancer, talukaCenters, Taluka } from './data';
 import { Portrait } from './UI';
 
@@ -23,7 +23,9 @@ type Props = {
 };
 
 export default function MapCanvas({ people, place, radius, compact, onSelect }: Props) {
-  const [size, setSize] = useState({ width: 900, height: compact ? 430 : 500 });
+  const { height: windowHeight } = useWindowDimensions();
+  const mapHeight = compact ? 430 : Math.max(500, Math.min(680, windowHeight - 275));
+  const [size, setSize] = useState({ width: 900, height: mapHeight });
   const [zoomDelta, setZoomDelta] = useState(0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -112,7 +114,7 @@ export default function MapCanvas({ people, place, radius, compact, onSelect }: 
   const circleKm = radius === 'Local' ? 5 : radius === '10 km' ? 10 : 25;
   const circlePixels = circleKm / (40075 * Math.cos(center.lat * Math.PI / 180)) * TILE * 2 ** zoom;
 
-  return <View ref={mapRef} onLayout={event => { const { width, height } = event.nativeEvent.layout; if (width !== size.width || height !== size.height) setSize({ width, height }); }} {...gestures.panHandlers} style={[{ height: compact ? 430 : 500, borderRadius: 27, overflow: 'hidden', backgroundColor: '#cbe8e2', position: 'relative', borderWidth: 1, borderColor: '#d9ddeb' }, Platform.OS === 'web' ? { cursor: dragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' } as any : null]}>
+  return <View ref={mapRef} onLayout={event => { const { width, height } = event.nativeEvent.layout; if (width !== size.width || height !== size.height) setSize({ width, height }); }} {...gestures.panHandlers} style={[{ height: mapHeight, borderRadius: 27, overflow: 'hidden', backgroundColor: '#cbe8e2', position: 'relative', borderWidth: 1, borderColor: '#d9ddeb' }, Platform.OS === 'web' ? { cursor: dragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' } as any : null]}>
     {tiles.map(tile => <Image key={`${zoom}-${tile.x}-${tile.y}`} source={{ uri: `https://tile.openstreetmap.org/${zoom}/${tile.x}/${tile.y}.png` }} style={{ width: TILE, height: TILE, position: 'absolute', left: tile.left, top: tile.top, pointerEvents: 'none' } as any} />)}
     {place !== 'Goa' && radius !== 'All Goa' && <View pointerEvents="none" style={{ position: 'absolute', left: size.width / 2 + pan.x - circlePixels, top: size.height / 2 + pan.y - circlePixels, width: circlePixels * 2, height: circlePixels * 2, borderRadius: circlePixels, borderWidth: 2, borderColor: PURPLE, backgroundColor: 'rgba(113,58,240,0.08)' }} />}
     {markers.map(({ person, position }) => {

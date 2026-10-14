@@ -37,6 +37,11 @@ begin
       and policyname='active_account_gate' and permissive='RESTRICTIVE') then
     raise exception 'Suspended account gate missing from freelancer presence';
   end if;
+  if not exists(select 1 from pg_proc where oid='public.freelancer_response_stats()'::regprocedure
+      and prosecdef) then raise exception 'Aggregate response function missing its security boundary'; end if;
+  if not has_function_privilege('anon','public.freelancer_response_stats()','EXECUTE') then
+    raise exception 'Anonymous visitors cannot read aggregate response stats';
+  end if;
   if not exists(select 1 from pg_trigger where tgname='hiring_requires_approved_inquiry' and not tgisinternal) then
     raise exception 'Hiring inquiry trigger missing';
   end if;

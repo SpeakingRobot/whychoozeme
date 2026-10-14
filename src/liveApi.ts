@@ -40,28 +40,33 @@ export async function getFinder(userId: string) {
 }
 export async function getFreelancers(): Promise<Freelancer[]> {
   const client = assertDb();
-  const [profileResult, sampleResult, premiumResult, presenceResult] = await Promise.all([
+  const [profileResult, sampleResult, premiumResult, presenceResult, responseResult] = await Promise.all([
     client.from('freelancer_profiles').select('user_id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,image_url,created_at').order('created_at', { ascending: false }),
     client.from('sample_freelancers').select('id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,card_line,image_index,rating,review_count,sort_order').order('sort_order', { ascending: true }),
     client.from('user_entitlements').select('user_id').eq('premium', true),
     client.from('freelancer_presence').select('freelancer_id,last_active_at'),
+    client.rpc('freelancer_response_stats'),
   ]);
   const rows = unwrap(profileResult), samples = unwrap(sampleResult);
   const premiumUsers = new Set((unwrap(premiumResult) || []).map((row: any) => row.user_id));
   // The directory remains usable while the presence migration is being applied.
   const activity = new Map((presenceResult.data || []).map((row: any) => [row.freelancer_id, row.last_active_at]));
+  const responses = new Map<string, { median_response_minutes: number; response_count: number }>((responseResult.data || []).map((row: any) => [row.freelancer_id, row]));
   // Sample-only states disappear with the sample rows; real accounts always use tracked activity.
-  const sampleActivityMinutes = new Map([[1, 0], [2, 18], [5, 145], [7, 0]]);
+  const sampleActivityMinutes = [0, 18, 145, 46, 0, 1440, 35, 8];
+  const sampleResponseMinutes = [6, 28, 12, 52, 9, 120, 14, 38];
   const sampledAt = Date.now();
   const realPeople = (rows || []).map((row: any) => ({ id: row.user_id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality || row.taluka,
     lat: row.latitude, lon: row.longitude, rating: 0, reviews: 0, distance: 'Nearby',
-    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id), lastActiveAt: activity.get(row.user_id) }));
+    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id), lastActiveAt: activity.get(row.user_id),
+    responseMinutes: responses.get(row.user_id)?.median_response_minutes, responseSamples: responses.get(row.user_id)?.response_count }));
   const samplePeople = (samples || []).map((row: any) => ({ id: row.id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality,
     lat: row.latitude, lon: row.longitude, rating: Number(row.rating), reviews: row.review_count, distance: row.taluka,
     line: row.card_line, why: row.why_me, work: row.portfolio || [], image: row.image_index, demo: true,
-    lastActiveAt: sampleActivityMinutes.has(row.sort_order) ? new Date(sampledAt - sampleActivityMinutes.get(row.sort_order)! * 60_000).toISOString() : undefined }));
+    lastActiveAt: new Date(sampledAt - sampleActivityMinutes[(Math.max(1, Number(row.sort_order) || 1) - 1) % sampleActivityMinutes.length] * 60_000).toISOString(),
+    responseMinutes: sampleResponseMinutes[(Math.max(1, Number(row.sort_order) || 1) - 1) % sampleResponseMinutes.length] }));
   return [...realPeople, ...samplePeople];
 }
 export async function markFreelancerActive(userId: string) {

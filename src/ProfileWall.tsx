@@ -5,6 +5,7 @@ import { Button, color, Heading, Portrait } from './UI';
 import { CalendarIcon } from './icons';
 import InquiryActionButton from './InquiryActionButton';
 import PresenceStatus from './PresenceStatus';
+import ResponseBadge from './ResponseBadge';
 
 type Props = {
   profile: Freelancer;
@@ -39,7 +40,7 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
             </View>
             <Text style={[text, { color: color.muted, fontSize: 14 }]}>⌖ {profile.place}, Goa</Text>
           </View>
-          <View style={{ marginTop: 6 }}><PresenceStatus person={profile} /></View>
+          <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 9 }}><PresenceStatus person={profile} /><ResponseBadge person={profile} /></View>
         </View>
         <View style={{ backgroundColor: '#f7f0ff', borderLeftWidth: 4, borderLeftColor: color.purple, borderRadius: 16, paddingHorizontal: narrow ? 15 : 19, paddingVertical: 13 }}>
           <Text style={[text, { fontSize: narrow ? 15 : 17, lineHeight: narrow ? 23 : 26, fontWeight: '700' }]}>“{profile.why}”</Text>

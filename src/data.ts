@@ -42,6 +42,8 @@ export type Freelancer = {
   premium?: boolean;
   demo?: boolean;
   lastActiveAt?: string;
+  responseMinutes?: number;
+  responseSamples?: number;
 };
 
 export type Finder = { name: string; email: string; taluka: Taluka };
