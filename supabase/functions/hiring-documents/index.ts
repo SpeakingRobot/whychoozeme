@@ -97,6 +97,7 @@ Deno.serve(async request => {
     const authClient = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
     const { data: auth, error: authError } = await authClient.auth.getUser(token);
     if (authError || !auth.user) return error('Authentication required', 401);
+    if (auth.user.banned_until && Date.parse(auth.user.banned_until) > Date.now()) return error('Account suspended', 403);
     const server = createClient(url, serviceKey, { auth: { persistSession: false } });
     const { action, agreementId } = await request.json();
     if (!/^[0-9a-f-]{36}$/i.test(String(agreementId))) return error('Invalid agreement ID');

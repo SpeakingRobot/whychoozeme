@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { Freelancer } from './data';
-import { demoPortfolio } from './portfolio';
+import { samplePortfolio } from './portfolio';
 import { Button, color, Heading } from './UI';
 
 export type ProfileDocument = { name: string; size: number; uri: string };
@@ -25,7 +25,7 @@ type Props = {
 export default function ProfileMedia({ profile, narrow, canEdit, photos, video, documents, onAddPhotos, onAddVideo, onAddDocuments, onRemovePhoto, onRemoveVideo, onRemoveDocument }: Props) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const section = { borderTopWidth: 1, borderTopColor: color.line, padding: narrow ? 18 : 28 };
-  const samples = demoPortfolio[profile.id.replace(/^sample-/, '')] || [];
+  const samples = samplePortfolio[profile.id.replace(/^sample-/, '')] || [];
   const gallery = [...samples.map(item => ({ source: Platform.OS === 'web' ? { uri: item.source as unknown as string } : item.source, label: item.label, sample: true, index: -1 })), ...photos.map((uri, index) => ({ source: { uri }, label: `Your photo ${index + 1}`, sample: false, index }))];
   const usedBytes = documents.reduce((total, item) => total + item.size, 0);
   return <View>
@@ -36,11 +36,11 @@ export default function ProfileMedia({ profile, narrow, canEdit, photos, video, 
     </View>
     <View style={section}><View style={{ alignItems: 'center', marginBottom: 16 }}><Heading size={24}>Portfolio video <Text style={{ color: color.orange }}>▶</Text></Heading><Text style={[info, { marginTop: 3 }]}>One dedicated video · exact 16:9 · under 14 MB</Text>{canEdit && <Button outline onPress={onAddVideo} style={{ minHeight: 37, marginTop: 10 }} textStyle={{ fontSize: 12 }}>{video ? 'Replace video' : '+ Add video'}</Button>}</View>
       <View style={{ width: '100%', maxWidth: 820, alignSelf: 'center', padding: narrow ? 7 : 12, backgroundColor: '#f3e6ff', borderRadius: 25, borderWidth: 2, borderColor: '#d5b7fc', shadowColor: color.purple, shadowOpacity: .2, shadowRadius: 17, elevation: 4 }}><View style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: '#20173f', borderRadius: 17, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>{video && Platform.OS === 'web' ? React.createElement('video', { src: video, controls: true, preload: 'metadata', style: { width: '100%', height: '100%', objectFit: 'contain' } }) : <View style={{ alignItems: 'center', padding: 22 }}><View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#7b42f6', alignItems: 'center', justifyContent: 'center', marginBottom: 13 }}><Text style={{ color: '#fff', fontSize: 28, marginLeft: 4 }}>▶</Text></View><Text style={{ fontFamily: 'Nunito', color: '#fff', fontWeight: '900', fontSize: narrow ? 16 : 20 }}>Video showcase</Text><Text style={{ fontFamily: 'Nunito', color: '#cbbce9', fontSize: 12, marginTop: 5, textAlign: 'center' }}>{canEdit ? 'Add your best reel, introduction, or work highlight.' : 'A video showcase can appear here.'}</Text></View>}</View></View>
-      {canEdit && <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: 11 }}><Text style={info}>Preview uploads last until this page is refreshed.</Text>{video && <Pressable accessibilityRole="button" onPress={onRemoveVideo}><Text style={{ fontFamily: 'Nunito', color: color.coral, fontWeight: '900', fontSize: 12 }}>Remove video</Text></Pressable>}</View>}
+      {canEdit && video && <View style={{ flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 11 }}><Pressable accessibilityRole="button" onPress={onRemoveVideo}><Text style={{ fontFamily: 'Nunito', color: color.coral, fontWeight: '900', fontSize: 12 }}>Remove video</Text></Pressable></View>}
     </View>
     <View style={section}><View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}><View><Heading size={23}>Documents <Text style={{ color: color.purple }}>⌁</Text></Heading><Text style={[info, { marginTop: 3 }]}>PDFs and text documents · 15 MB total</Text></View>{canEdit && <Button outline onPress={onAddDocuments} style={{ minHeight: 37 }} textStyle={{ fontSize: 12 }}>+ Add documents</Button>}</View>
       {documents.length ? <View style={{ gap: 8, marginTop: 14 }}>{documents.map((item, index) => <View key={`${item.uri}-${index}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 13, backgroundColor: '#f8f5fc', padding: 12 }}><Text style={{ fontSize: 22 }}>📄</Text><View style={{ flex: 1 }}>{Platform.OS === 'web' ? React.createElement('a', { href: item.uri, download: item.name, style: { color: color.purple, fontFamily: 'Nunito', fontWeight: '900', fontSize: 13, textDecoration: 'none' } }, item.name) : <Text style={{ fontFamily: 'Nunito', color: color.purple, fontWeight: '900' }}>{item.name}</Text>}<Text style={info}>{(item.size / 1024 / 1024).toFixed(2)} MB</Text></View>{canEdit && <Pressable accessibilityRole="button" accessibilityLabel={`Remove document ${item.name}`} onPress={() => onRemoveDocument(index)}><Text style={{ color: color.coral, fontSize: 21 }}>×</Text></Pressable>}</View>)}</View> : <View style={{ borderRadius: 14, borderWidth: 1, borderStyle: 'dashed', borderColor: '#ded5ed', padding: 20, marginTop: 14 }}><Text style={[info, { textAlign: 'center' }]}>Project briefs, certificates, and other work files can live here.</Text></View>}
-      {canEdit && <Text style={[info, { marginTop: 12 }]}>{(usedBytes / 1024 / 1024).toFixed(2)} / 15 MB used · files stay in this preview until refresh</Text>}
+      {canEdit && <Text style={[info, { marginTop: 12 }]}>{(usedBytes / 1024 / 1024).toFixed(2)} / 15 MB used · saved to your profile</Text>}
     </View>
   </View>;
 }

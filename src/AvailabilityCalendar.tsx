@@ -52,6 +52,6 @@ export default function AvailabilityCalendar({ name, busy, owner, readOnly = fal
     {!owner && !readOnly && <TextInput accessibilityLabel="Project details" value={note} onChangeText={setNote} placeholder="Tell them about your project and timing..." placeholderTextColor="#9693ab" multiline style={{ marginTop: 10, minHeight: 77, borderWidth: 1, borderColor: color.line, borderRadius: 14, padding: 12, fontFamily: 'Nunito', color: color.ink, textAlignVertical: 'top' }} />}
     {!!error && <Text style={{ fontFamily: 'Nunito', color: color.coral, fontSize: 12, marginTop: 9 }}>{error}</Text>}
     {!readOnly && <Button onPress={submit} style={{ alignSelf: 'flex-start', marginTop: 13 }}>{owner ? 'Mark as busy' : 'Request these dates'}</Button>}
-    <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 11, marginTop: 8 }}>{readOnly ? 'Availability is indicative. Confirm dates in an inquiry and approved chat.' : 'Walkthrough availability is saved on this device.'}</Text>
+    <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 11, marginTop: 8 }}>{readOnly ? 'Availability is indicative. Confirm dates in an inquiry and approved chat.' : 'Busy dates are saved to your account.'}</Text>
   </View>;
 }

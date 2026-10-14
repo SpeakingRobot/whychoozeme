@@ -7,10 +7,12 @@
     "ios": "react-native run-ios",
     "windows": "npx @react-native-community/cli run-windows",
     "web": "vite --host 127.0.0.1",
+    "build": "npm run build:web",
     "build:web": "tsc --noEmit && vite build",
+    "preview:web": "vite preview --host 127.0.0.1",
     "lint": "eslint App.tsx src __tests__ --quiet",
     "start": "react-native start",
-    "test": "jest",
+    "test": "jest --cacheDirectory .jest-cache",
     "test:windows": "jest --config jest.config.windows.js"
   },
   "dependencies": {

@@ -1,9 +1,13 @@
-import { freelancers, requestMatchesFreelancer, requestReach, RequestPost } from '../src/data';
+import { Freelancer, requestMatchesFreelancer, requestReach, RequestPost, talukaCenters } from '../src/data';
 
 const posted = Date.UTC(2026, 9, 12);
 const request: RequestPost = { id: 'test', title: 'Photos', category: 'photography', details: 'Event', taluka: 'Tiswadi', finder: 'Test', createdAt: posted };
-const tanya = freelancers.find(person => person.id === 'tanya')!;
-const meera = freelancers.find(person => person.id === 'meera')!;
+const person = (category: string, taluka: 'Tiswadi' | 'Bardez'): Freelancer => ({
+  id: category, name: 'Test freelancer', role: 'Creative', category, tags: [], taluka,
+  place: taluka, ...talukaCenters[taluka], rating: 0, reviews: 0, distance: '', line: '', why: '', work: [], image: -1,
+});
+const tanya = person('photography', 'Tiswadi');
+const meera = person('design', 'Bardez');
 
 test('a matching request starts in its taluka and widens to all Goa', () => {
   expect(requestMatchesFreelancer(request, tanya, posted)).toBe(true);

@@ -45,6 +45,7 @@ Deno.serve(async request => {
     const authClient = createClient(url, anon, { auth: { persistSession: false } });
     const { data: auth, error: authError } = await authClient.auth.getUser(token);
     if (authError || !auth.user) return fail('Authentication required.', 401);
+    if (auth.user.banned_until && Date.parse(auth.user.banned_until) > Date.now()) return fail('Account suspended.', 403);
     const server = createClient(url, serviceKey, { auth: { persistSession: false } });
     const { data: admin, error: adminError } = await server.from('admins').select('user_id').eq('user_id', auth.user.id).maybeSingle();
     if (adminError) throw adminError;

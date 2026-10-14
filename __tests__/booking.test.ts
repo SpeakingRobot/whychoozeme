@@ -1,4 +1,4 @@
-import { addDays, inRange, isoDay, overlaps, sampleBusyRanges } from '../src/booking';
+import { addDays, inRange, isoDay, overlaps } from '../src/booking';
 
 describe('availability dates', () => {
   it('finds bookings across a selected range and keeps date math across months', () => {
@@ -6,7 +6,6 @@ describe('availability dates', () => {
     expect(overlaps({ start: '2026-10-14', end: '2026-10-16' }, { start: '2026-10-16', end: '2026-10-18' })).toBe(true);
     expect(overlaps({ start: '2026-10-14', end: '2026-10-16' }, { start: '2026-10-17', end: '2026-10-18' })).toBe(false);
     expect(inRange('2026-10-15', { start: '2026-10-14', end: '2026-10-16' })).toBe(true);
-    expect(sampleBusyRanges('2026-10-13')[0]).toEqual({ start: '2026-10-18', end: '2026-10-20' });
     expect(isoDay(new Date(2026, 9, 13))).toBe('2026-10-13');
   });
 });

@@ -15,11 +15,20 @@ function unwrap<T>(result: { data?: T; error: { message: string } | null }): T {
 export async function account() { const result = await assertDb().auth.getUser(); if (result.error?.name === 'AuthSessionMissingError') return { user: null }; if (result.error) throw new Error(result.error.message); return result.data; }
 export async function signUpFinder(email: string, password: string, name: string, taluka: Taluka) {
   const client = assertDb();
-  const data = unwrap(await client.auth.signUp({ email, password, options: { data: { display_name: name, taluka } } }));
+  const data = unwrap(await client.auth.signUp({ email, password, options: { data: { display_name: name, taluka },
+    ...(Platform.OS === 'web' ? { emailRedirectTo: globalThis.location.origin } : {}) } }));
   if (data.session && data.user) await saveFinder(data.user.id, name, taluka);
   return !!data.session;
 }
 export async function signIn(email: string, password: string) { const result = await assertDb().auth.signInWithPassword({ email, password }); if (result.error) throw new Error(result.error.message); return result.data; }
+export async function sendPasswordReset(email: string) {
+  const result = await assertDb().auth.resetPasswordForEmail(email, Platform.OS === 'web' ? { redirectTo: globalThis.location.origin } : {});
+  if (result.error) throw new Error(result.error.message);
+}
+export async function updatePassword(password: string) {
+  const result = await assertDb().auth.updateUser({ password });
+  if (result.error) throw new Error(result.error.message);
+}
 export async function signOut() { unwrap(await assertDb().auth.signOut()); }
 export async function saveFinder(userId: string, name: string, taluka: Taluka) {
   unwrap(await assertDb().from('finder_profiles').upsert({ user_id: userId, display_name: name, taluka }));
@@ -75,13 +84,7 @@ export async function getRequests(userId: string): Promise<RequestPost[]> {
   const real = (rows || []).map((row: any) => ({ id: row.id, title: row.title, category: row.category_slug,
     details: row.details, taluka: row.taluka as Taluka, createdAt: new Date(row.created_at).getTime(),
     finder: row.finder_id === userId ? 'You' : 'Local Finder', finderId: row.finder_id }));
-  return [...real, ...await getSampleRequests()];
-}
-export async function getSampleRequests(): Promise<RequestPost[]> {
-  const rows = unwrap(await assertDb().from('sample_requests').select('*').order('sort_order', { ascending: true })) || [];
-  return rows.map((row: any) => ({ id: row.id, title: row.title, category: row.category_slug,
-    details: row.details, taluka: row.taluka as Taluka, createdAt: new Date(row.created_at).getTime(),
-    finder: row.finder_name, demo: true }));
+  return real;
 }
 export async function createRequest(userId: string, title: string, details: string, category: string, taluka: Taluka) {
   const center = talukaCenters[taluka];

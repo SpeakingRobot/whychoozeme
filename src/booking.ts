@@ -1,5 +1,4 @@
 export type DateRange = { start: string; end: string };
-export type AvailabilityBlock = DateRange & { id: string; freelancerId: string };
 export type BookingRequest = DateRange & {
   id: string;
   freelancerId: string;
@@ -20,7 +19,3 @@ export const readableDay = (day: string) => {
   const [year, month, date] = day.split('-').map(Number);
   return new Date(year, month - 1, date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
-export const sampleBusyRanges = (today = isoDay(new Date())): DateRange[] => [
-  { start: addDays(today, 5), end: addDays(today, 7) },
-  { start: addDays(today, 17), end: addDays(today, 18) },
-];

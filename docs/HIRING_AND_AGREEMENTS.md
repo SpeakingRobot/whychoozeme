@@ -1,10 +1,10 @@
 # Hiring and agreement module
 
-This module uses the existing React Native, React Native Web, and Supabase stack. It does not introduce Next.js. The browser reads the linked Supabase project by default. Add `?demo` only for the local walkthrough, which cannot create real contracts.
+This module uses the existing React Native, React Native Web, and Supabase stack. It does not introduce Next.js. The browser uses the linked Supabase project for accounts, inquiries, chat, hiring, and agreements. The retained example portfolio cards are read-only.
 
 ## Install in another Supabase project
 
-1. Apply the three `20261012` migrations, then `supabase/migrations/20261014_hiring_agreements.sql` in a test project.
+1. Apply the `20261012` migrations, then the `20261014` migrations in filename order in a test project. Apply `20261014_production_media_security.sql` after the inquiry gate and admin migrations.
 2. Deploy `supabase/functions/hiring-documents` with Supabase CLI. Supply `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` as Edge Function secrets, never in the app bundle.
 3. Start the app with `npm run web` and open the root URL. Register two separate confirmed Auth users. Both need finder profiles; the freelancer also needs a freelancer profile.
 4. On the freelancer's own public profile, add services and pricing choices and set weekly capacity. The Finder can send a custom offer from that profile. Use the avatar menu's **Hiring & agreements** screen to review offers and generate an agreement after exact acceptance.

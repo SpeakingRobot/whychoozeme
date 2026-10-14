@@ -22,4 +22,9 @@ describe('portfolio media limits', () => {
     expect(documentUploadError([{ type: 'text/plain', size: 1025 }], MAX_DOCUMENT_BYTES - 1024)).toMatch(/15 MB/);
     expect(documentUploadError([{ type: 'image/png', size: 100 }], 0)).toMatch(/not images/);
   });
+  it('rejects empty files and unsupported text types', () => {
+    expect(photoUploadError([{ type: 'image/jpeg', size: 0 }], 0)).toMatch(/photo/);
+    expect(videoUploadError({ type: 'video/mp4', size: 0 })).toMatch(/video/);
+    expect(documentUploadError([{ type: 'text/html', size: 100 }], 0)).toMatch(/supported/);
+  });
 });

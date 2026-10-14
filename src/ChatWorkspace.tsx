@@ -11,7 +11,6 @@ type Props = {
   messages: ChatMessage[];
   draft: string;
   role: 'visitor' | 'finder' | 'freelancer';
-  live: boolean;
   canShareContact: boolean;
   onShareContact: () => void;
   messageKey: (person: Freelancer) => string;
@@ -22,12 +21,12 @@ type Props = {
   onSend: () => void;
 };
 
-export default function ChatWorkspace({ compact, people, selected, messages, draft, role, live, canShareContact, onShareContact, messageKey, onSelect, onBack, onClose, onDraft, onSend }: Props) {
+export default function ChatWorkspace({ compact, people, selected, messages, draft, role, canShareContact, onShareContact, messageKey, onSelect, onBack, onClose, onDraft, onSend }: Props) {
   const ownSide = role === 'freelancer' ? 'freelancer' : 'finder';
   const conversation = selected ? messages.filter(message => message.freelancerId === messageKey(selected)) : [];
   return <View style={{ width: '100%', maxWidth: 1160, alignSelf: 'center', paddingHorizontal: compact ? 14 : 24, paddingTop: 24, paddingBottom: 50 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 5 }}><ChatIcon color={color.purple} size={29} /><Heading size={compact ? 27 : 32}>Chats</Heading><Pressable accessibilityRole="button" accessibilityLabel="Close chats" onPress={onClose} style={{ marginLeft: 'auto', width: 42, height: 42, borderRadius: 21, backgroundColor: '#f1e8ff', borderWidth: 1, borderColor: '#e6d8fb', alignItems: 'center', justifyContent: 'center' }}><CloseIcon color={color.ink} size={20} /></Pressable></View>
-    <Text style={{ fontFamily: 'Nunito', fontSize: 14, color: color.muted, marginBottom: 19 }}>{live ? 'Chats open after a freelancer approves an inquiry. Discuss details here, then create an agreement together.' : 'A preview of conversations with people around Goa.'}</Text>
+    <Text style={{ fontFamily: 'Nunito', fontSize: 14, color: color.muted, marginBottom: 19 }}>Chats open after a freelancer approves an inquiry. Discuss details here, then create an agreement together.</Text>
     <View style={{ flexDirection: compact ? 'column' : 'row', minHeight: compact ? 450 : 550, borderWidth: 1, borderColor: color.line, borderRadius: 23, backgroundColor: '#fff', overflow: 'hidden' }}>
       {(!compact || !selected) && <View style={{ width: compact ? '100%' : 318, borderRightWidth: compact ? 0 : 1, borderRightColor: color.line }}>
         <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: color.line }}><Text style={{ fontFamily: 'Nunito', fontWeight: '900', color: color.ink, fontSize: 17 }}>Inbox <Text style={{ color: color.purple }}>({people.length})</Text></Text></View>

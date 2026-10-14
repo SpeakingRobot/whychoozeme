@@ -1,4 +1,5 @@
 import { db } from './liveApi';
+import { inquiryValidationError } from './inquiryValidation';
 
 export type Inquiry = {
   id: string; finder_id: string; freelancer_id: string; title: string; requirements: string;
@@ -23,9 +24,8 @@ export async function listInquiries(): Promise<Inquiry[]> {
 }
 
 export async function submitInquiry(finderId: string, freelancerId: string, input: InquiryInput, files: File[]): Promise<{ id: string; failed: string[] }> {
-  if (input.title.trim().length < 4 || input.requirements.trim().length < 10) throw new Error('Add a title and at least 10 characters of requirements.');
-  if (files.length > 5) throw new Error('Add up to five reference images.');
-  for (const file of files) if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) throw new Error('Reference images must be JPEG, PNG or WebP and at most 5 MB each.');
+  const validation = inquiryValidationError(input, files);
+  if (validation) throw new Error(validation);
   const { data, error } = await client().from('freelancer_inquiries').insert({
     finder_id: finderId, freelancer_id: freelancerId, title: input.title.trim(), requirements: input.requirements.trim(),
     work_mode: input.work_mode, preferred_start: input.preferred_start || null, preferred_end: input.preferred_end || null,
@@ -39,7 +39,7 @@ export async function submitInquiry(finderId: string, freelancerId: string, inpu
     const uploaded = await client().storage.from('inquiry-private').upload(path, file, { contentType: file.type });
     if (uploaded.error) { failures.push(file.name); continue; }
     const saved = await client().from('inquiry_attachments').insert({ inquiry_id: id, uploaded_by: finderId, storage_path: path, file_name: file.name.slice(0, 180), mime_type: file.type, size_bytes: file.size });
-    if (saved.error) failures.push(file.name);
+    if (saved.error) { await client().storage.from('inquiry-private').remove([path]); failures.push(file.name); }
   }
   return { id, failed: failures };
 }

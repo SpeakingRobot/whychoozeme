@@ -28,8 +28,8 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
       </View>
       <View style={{ flex: 1, gap: 12 }}>
         <View>
-          <Heading size={narrow ? 29 : 37}>{profile.name} <Text style={{ color: '#3278ff' }}>✿</Text>{profile.premium && <Text style={{ color: '#a26800', fontSize: 14 }}>  ★ Premium</Text>}</Heading>
-          <Text style={[text, { color: color.muted, fontSize: 15, marginTop: 2 }]}>{profile.role} · {profile.place}, Goa</Text>
+          <Heading size={narrow ? 29 : 37}>{profile.name}{profile.premium && <Text style={{ color: '#a26800', fontSize: 14 }}>  ★ Premium</Text>}</Heading>
+          <Text style={[text, { color: color.muted, fontSize: 15, marginTop: 2 }]}>{profile.role} · {profile.place}, Goa{profile.demo ? ' · Portfolio example' : ''}</Text>
         </View>
         <View style={{ backgroundColor: '#f7f0ff', borderLeftWidth: 4, borderLeftColor: color.purple, borderRadius: 16, paddingHorizontal: narrow ? 15 : 19, paddingVertical: 13 }}>
           <Text style={[text, { fontSize: narrow ? 15 : 17, lineHeight: narrow ? 23 : 26, fontWeight: '700' }]}>“{profile.why}”</Text>
@@ -43,10 +43,10 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', flex: 1 }}>
         <View style={{ backgroundColor: '#fff1d7', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9 }}><Text style={[text, { fontWeight: '900', color: '#975e00', fontSize: 16 }]}>{reviewCount ? `★ ${rating.toFixed(1)}` : '★ New'} <Text style={{ fontSize: 11, color: color.muted }}>· {reviewCount} reviews</Text></Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel={`I am located at ${profile.place}, show on map`} onPress={onMap} style={{ borderRadius: 13, backgroundColor: '#f3edff', paddingHorizontal: 12, paddingVertical: 10 }}><Text style={[text, { color: color.purple, fontWeight: '900', fontSize: 12 }]}>⌖ I am located at {profile.place} →</Text></Pressable>
-        <Button outline onPress={onAvailability} style={{ minHeight: 40 }} textStyle={{ fontSize: 12 }}>See availability</Button>
+        <Button outline onPress={onAvailability} disabled={profile.demo} style={{ minHeight: 40 }} textStyle={{ fontSize: 12 }}>See availability</Button>
       </View>
       <View style={{ flexDirection: 'row', gap: 9 }}>
-        <Button onPress={onChat} style={{ minHeight: 42 }}>{chatReady ? 'Open chat' : 'Inquire'}</Button>
+        <Button onPress={onChat} disabled={profile.demo} style={{ minHeight: 42 }}>{profile.demo ? 'Portfolio example' : chatReady ? 'Open chat' : 'Inquire'}</Button>
         <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Remove saved profile' : 'Save profile'} onPress={onSave} style={{ width: 42, height: 42, borderRadius: 22, backgroundColor: '#f4edff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.purple, fontSize: 24 }}>{saved ? '♥' : '♡'}</Text></Pressable>
       </View>
     </View>
