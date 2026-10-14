@@ -41,8 +41,8 @@ export async function getFinder(userId: string) {
 export async function getFreelancers(): Promise<Freelancer[]> {
   const client = assertDb();
   const [profileResult, sampleResult, premiumResult] = await Promise.all([
-    client.from('freelancer_profiles').select('*').order('created_at', { ascending: false }),
-    client.from('sample_freelancers').select('*').order('sort_order', { ascending: true }),
+    client.from('freelancer_profiles').select('user_id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,image_url,created_at').order('created_at', { ascending: false }),
+    client.from('sample_freelancers').select('id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,card_line,image_index,rating,review_count,sort_order').order('sort_order', { ascending: true }),
     client.from('user_entitlements').select('user_id').eq('premium', true),
   ]);
   const rows = unwrap(profileResult), samples = unwrap(sampleResult);

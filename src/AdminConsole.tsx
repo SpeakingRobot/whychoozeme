@@ -176,7 +176,7 @@ export default function AdminConsole() {
 
   return <div style={{ minHeight: '100vh', background: '#f8f6fc', color: ink, fontFamily: 'Nunito, sans-serif' }}>
     <header style={{ background: '#fff', borderBottom: '1px solid #e9e4f1', padding: '18px max(24px, calc((100vw - 1360px) / 2))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20 }}>
-      <div><div style={{ fontWeight: 900, fontSize: 22 }}>WhyChooseMe <span style={{ color: purple }}>Operations</span></div><div style={{ color: '#77748c', fontSize: 12 }}>User and profile management</div></div>
+      <div><div style={{ fontWeight: 900, fontSize: 22 }}>WhyChoozeMe <span style={{ color: purple }}>Operations</span></div><div style={{ color: '#77748c', fontSize: 12 }}>User and profile management</div></div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}><a href="/" style={{ color: purple, fontWeight: 800 }}>View site</a>{viewerEmail && <span style={{ fontSize: 13 }}>{viewerEmail}</span>}{authState !== 'signed-out' && authState !== 'loading' && <button style={buttonStyle(true)} onClick={doSignOut}>Sign out</button>}</div>
     </header>
     <main style={{ maxWidth: 1360, margin: '0 auto', padding: '30px 24px 70px' }}>

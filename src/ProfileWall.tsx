@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Freelancer } from './data';
 import { Button, color, Heading, Portrait } from './UI';
+import { CalendarIcon } from './icons';
 
 type Props = {
   profile: Freelancer;
@@ -34,7 +35,7 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
               <Text style={{ color: '#bc7416', fontSize: 12 }}>✦</Text>
               <Text style={[text, { color: '#865018', fontSize: 14, fontWeight: '900' }]}>{profile.role}</Text>
             </View>
-            <Text style={[text, { color: color.muted, fontSize: 14 }]}>⌖ {profile.place}, Goa{profile.demo ? ' · Portfolio example' : ''}</Text>
+            <Text style={[text, { color: color.muted, fontSize: 14 }]}>⌖ {profile.place}, Goa</Text>
           </View>
         </View>
         <View style={{ backgroundColor: '#f7f0ff', borderLeftWidth: 4, borderLeftColor: color.purple, borderRadius: 16, paddingHorizontal: narrow ? 15 : 19, paddingVertical: 13 }}>
@@ -49,10 +50,10 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', flex: 1 }}>
         <View style={{ backgroundColor: '#fff1d7', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9 }}><Text style={[text, { fontWeight: '900', color: '#975e00', fontSize: 16 }]}>{reviewCount ? `★ ${rating.toFixed(1)}` : '★ New'} <Text style={{ fontSize: 11, color: color.muted }}>· {reviewCount} reviews</Text></Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel={`I am located at ${profile.place}, show on map`} onPress={onMap} style={{ borderRadius: 13, backgroundColor: '#f3edff', paddingHorizontal: 12, paddingVertical: 10 }}><Text style={[text, { color: color.purple, fontWeight: '900', fontSize: 12 }]}>⌖ I am located at {profile.place} →</Text></Pressable>
-        <Button outline onPress={onAvailability} disabled={profile.demo} style={{ minHeight: 40 }} textStyle={{ fontSize: 12 }}>See availability</Button>
+        <Button outline icon={<CalendarIcon color={color.purple} size={16} />} onPress={onAvailability} style={{ minHeight: 40 }} textStyle={{ fontSize: 12 }}>See availability</Button>
       </View>
       <View style={{ flexDirection: 'row', gap: 9 }}>
-        <Button onPress={onChat} disabled={profile.demo} style={{ minHeight: 42 }}>{profile.demo ? 'Portfolio example' : chatReady ? 'Open chat' : 'Inquire'}</Button>
+        <Button onPress={onChat} style={{ minHeight: 42 }}>{chatReady ? 'Open chat' : 'Inquire'}</Button>
         <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Remove saved profile' : 'Save profile'} onPress={onSave} style={{ width: 42, height: 42, borderRadius: 22, backgroundColor: '#f4edff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.purple, fontSize: 24 }}>{saved ? '♥' : '♡'}</Text></Pressable>
       </View>
     </View>

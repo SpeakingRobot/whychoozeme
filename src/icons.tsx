@@ -15,8 +15,21 @@ export function TabIcon({ name, color, size = 23 }: { name: 'people' | 'search' 
   </Svg>;
 }
 
+export function InfoNavIcon({ name, color = '#713af0', size = 17 }: { name: 'about' | 'contact' | 'mission'; color?: string; size?: number }) {
+  const shared = { stroke: color, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {name === 'about' && <><Circle cx="8" cy="8" r="2.7" {...shared} /><Circle cx="16.5" cy="9" r="2.2" {...shared} /><Path d="M2.7 19v-1.1a5.3 5.3 0 0 1 10.6 0V19H2.7ZM14.8 14.3a4.5 4.5 0 0 1 6.5 4V19h-5" {...shared} /></>}
+    {name === 'contact' && <><Path d="M3.5 5.5h17v13h-17v-13ZM3.8 6l8.2 7 8.2-7" {...shared} /></>}
+    {name === 'mission' && <><Circle cx="12" cy="12" r="9" {...shared} /><Circle cx="12" cy="12" r="5.5" {...shared} /><Circle cx="12" cy="12" r="1.9" {...shared} /></>}
+  </Svg>;
+}
+
 export function ChatIcon({ color = '#111638', size = 23 }: { color?: string; size?: number }) {
   return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"><Path d="M20.5 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-3.4-.7L3.5 21l1.6-4.8A8.5 8.5 0 1 1 20.5 11.5Z" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" /><Path d="M8 11.5h8M8 14.6h5.2" stroke={color} strokeWidth={1.9} strokeLinecap="round" /></Svg>;
+}
+
+export function CalendarIcon({ color = '#713af0', size = 18 }: { color?: string; size?: number }) {
+  return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"><Path d="M4 6.5h16v13H4v-13ZM4 10h16M8 3.5v5M16 3.5v5M8 14h2M12 14h2M16 14h2M8 17h2M12 17h2" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" /></Svg>;
 }
 
 export function CloseIcon({ color = '#111638', size = 22 }: { color?: string; size?: number }) {

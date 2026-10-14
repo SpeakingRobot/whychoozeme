@@ -24,7 +24,7 @@ export function InquiryForm({ person, finderId, onClose, onSent }: { person: Fre
   return <View style={{ paddingBottom: 16 }}>
     <Heading size={25}>Inquire with {person.name}</Heading>
     <Text style={[note, { marginTop: 6 }]}>Share your requirements. Chat opens when {person.name.split(' ')[0]} approves your inquiry.</Text>
-    {person.demo ? <Text style={[note, { marginTop: 16 }]}>This portfolio example cannot receive inquiries.</Text> : <>
+    {person.demo ? <Text style={[note, { marginTop: 16 }]}>This profile is not accepting inquiries yet.</Text> : <>
       <Text style={label}>What do you need?</Text><Field value={value.title} onChangeText={title => setValue({ ...value, title })} placeholder="e.g. Photos for a family celebration" />
       <Text style={label}>Requirements and details</Text><Field value={value.requirements} onChangeText={requirements => setValue({ ...value, requirements })} placeholder="Describe the work, location, schedule and what you expect to receive" multiline />
       <Text style={label}>How can the work happen?</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{(['either', 'remote', 'in_person'] as const).map(mode => <Pressable key={mode} accessibilityRole="button" onPress={() => setValue({ ...value, work_mode: mode })} style={{ paddingHorizontal: 13, paddingVertical: 9, borderRadius: 13, backgroundColor: value.work_mode === mode ? color.purple : '#f0e8f8' }}><Text style={{ fontFamily: 'Nunito', fontWeight: '900', color: value.work_mode === mode ? '#fff' : color.purple }}>{mode === 'either' ? 'Either' : mode === 'remote' ? 'Remote' : 'In person'}</Text></Pressable>)}</View>

@@ -16,15 +16,13 @@ function point(lat: number, lon: number, zoom: number) {
 
 type Props = {
   people: Freelancer[];
-  signedIn: boolean;
   place: string;
   radius: string;
   compact: boolean;
   onSelect: (person: Freelancer) => void;
-  onLocked: () => void;
 };
 
-export default function MapCanvas({ people, signedIn, place, radius, compact, onSelect, onLocked }: Props) {
+export default function MapCanvas({ people, place, radius, compact, onSelect }: Props) {
   const [size, setSize] = useState({ width: 900, height: compact ? 430 : 500 });
   const [zoomDelta, setZoomDelta] = useState(0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -117,11 +115,10 @@ export default function MapCanvas({ people, signedIn, place, radius, compact, on
   return <View ref={mapRef} onLayout={event => { const { width, height } = event.nativeEvent.layout; if (width !== size.width || height !== size.height) setSize({ width, height }); }} {...gestures.panHandlers} style={[{ height: compact ? 430 : 500, borderRadius: 27, overflow: 'hidden', backgroundColor: '#cbe8e2', position: 'relative', borderWidth: 1, borderColor: '#d9ddeb' }, Platform.OS === 'web' ? { cursor: dragging ? 'grabbing' : 'grab', userSelect: 'none', touchAction: 'none' } as any : null]}>
     {tiles.map(tile => <Image key={`${zoom}-${tile.x}-${tile.y}`} source={{ uri: `https://tile.openstreetmap.org/${zoom}/${tile.x}/${tile.y}.png` }} style={{ width: TILE, height: TILE, position: 'absolute', left: tile.left, top: tile.top, pointerEvents: 'none' } as any} />)}
     {place !== 'Goa' && radius !== 'All Goa' && <View pointerEvents="none" style={{ position: 'absolute', left: size.width / 2 + pan.x - circlePixels, top: size.height / 2 + pan.y - circlePixels, width: circlePixels * 2, height: circlePixels * 2, borderRadius: circlePixels, borderWidth: 2, borderColor: PURPLE, backgroundColor: 'rgba(113,58,240,0.08)' }} />}
-    {markers.map(({ person, index, position }) => {
-      const locked = !signedIn && index > 1;
-      return <Pressable accessibilityRole="button" accessibilityLabel={locked ? `Locked profile: ${person.name}` : `Open ${person.name}'s profile`} onPress={() => locked ? onLocked() : onSelect(person)} key={person.id} style={{ position: 'absolute', left: position.x - 22, top: position.y - 44, alignItems: 'center' }}>
-        <View style={{ width: 46, height: 46, borderRadius: 25, borderWidth: 3, borderColor: '#fff', backgroundColor: locked ? '#5b5673' : PURPLE, alignItems: 'center', justifyContent: 'center', shadowColor: '#321891', shadowOpacity: .3, shadowRadius: 9, elevation: 5, overflow: 'hidden' }}>{locked ? <Text style={{ fontSize: 20, color: '#fff' }}>🔒</Text> : <Portrait index={person.image} imageUrl={person.imageUrl} name={person.name} height={40} radius={20} />}</View>
-        <View style={{ width: 13, height: 13, backgroundColor: locked ? '#5b5673' : PURPLE, transform: [{ rotate: '45deg' }], marginTop: -7, borderRightWidth: 2, borderBottomWidth: 2, borderColor: '#fff' }} />
+    {markers.map(({ person, position }) => {
+      return <Pressable accessibilityRole="button" accessibilityLabel={`Open ${person.name}'s profile`} onPress={() => onSelect(person)} key={person.id} style={{ position: 'absolute', left: position.x - 22, top: position.y - 44, alignItems: 'center' }}>
+        <View style={{ width: 46, height: 46, borderRadius: 25, borderWidth: 3, borderColor: '#fff', backgroundColor: PURPLE, alignItems: 'center', justifyContent: 'center', shadowColor: '#321891', shadowOpacity: .3, shadowRadius: 9, elevation: 5, overflow: 'hidden' }}><Portrait index={person.image} imageUrl={person.imageUrl} name={person.name} height={40} radius={20} /></View>
+        <View style={{ width: 13, height: 13, backgroundColor: PURPLE, transform: [{ rotate: '45deg' }], marginTop: -7, borderRightWidth: 2, borderBottomWidth: 2, borderColor: '#fff' }} />
       </Pressable>;
     })}
     <View pointerEvents="none" style={{ position: 'absolute', left: 13, top: 13, maxWidth: compact ? 165 : 240, backgroundColor: 'rgba(255,255,255,.95)', borderRadius: 15, paddingHorizontal: 12, paddingVertical: 9, shadowColor: '#212043', shadowOpacity: .1, shadowRadius: 7 }}><Text style={{ fontFamily: 'Nunito', fontWeight: '900', color: INK, fontSize: 12 }}>{compact ? 'Drag to explore · Pinch to zoom' : 'Drag to explore · Scroll to zoom'}</Text><Text style={{ fontFamily: 'Nunito', color: '#72768d', fontSize: 11, marginTop: 1 }}>{markers.length} creatives visible</Text></View>
