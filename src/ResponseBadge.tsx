@@ -20,12 +20,12 @@ export default function ResponseBadge({ person, compact = false, side = false }:
   const tier = responseTier(person.responseMinutes);
   if (!tier) return null;
   const duration = responseDuration(person.responseMinutes!);
-  if (side) return <View accessibilityLabel={`Response rate: ${tier.label.toLowerCase()}. Typical inquiry response ${duration}.`} style={{ flexDirection: 'row', alignItems: 'flex-start', alignSelf: 'flex-start', gap: 5, minWidth: 0, minHeight: 30, marginTop: 2 }}>
-    <View style={{ minWidth: 0, alignItems: 'flex-end' }}><Text style={{ color: tier.ink, fontFamily: 'Nunito', fontSize: 11, lineHeight: 14, fontWeight: '900' }} numberOfLines={1}>Response rate</Text><Text style={{ color: '#7b8091', fontFamily: 'Nunito', fontSize: 10, lineHeight: 12 }} numberOfLines={1}>{tier.label} · ~{duration}</Text></View>
-    <Text style={{ color: tier.ink, fontSize: 12, lineHeight: 14, marginTop: 1 }}>{tier.icon}</Text>
+  const icon = <View style={{ width: side || compact ? 23 : 30, height: side || compact ? 23 : 30, borderRadius: 9, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: tier.ink, fontSize: side || compact ? 12 : 15, fontWeight: '900' }}>{tier.icon}</Text></View>;
+  const detail = <View style={{ minWidth: 0, alignItems: side ? 'flex-end' : 'flex-start' }}>
+    <Text style={{ color: tier.ink, fontFamily: 'Nunito', fontSize: side || compact ? 8 : 10, lineHeight: side || compact ? 11 : 13, fontWeight: '900', letterSpacing: .65 }} numberOfLines={1}>RESPONSE RATE</Text>
+    <Text style={{ color: tier.ink, fontFamily: 'Nunito', fontSize: side || compact ? 10 : 12, lineHeight: side || compact ? 14 : 16, fontWeight: '900' }} numberOfLines={1}>{tier.label} · ~{duration}</Text>
   </View>;
-  return <View accessibilityLabel={`Response rate: ${tier.label.toLowerCase()}. Typical inquiry response ${duration}.`} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%', borderRadius: 14, borderWidth: 1, borderColor: tier.border, backgroundColor: tier.background, paddingHorizontal: compact ? 6 : 8, paddingVertical: compact ? 2 : 4 }}>
-    <Text style={{ fontSize: compact ? 10 : 11, color: tier.ink }}>{tier.icon}</Text>
-    <Text style={{ fontFamily: 'Nunito', fontSize: compact ? 9 : 10, fontWeight: '900', color: tier.ink }} numberOfLines={1}>{compact ? tier.label : `Response rate · ${tier.label} · ~${duration}`}</Text>
+  return <View accessibilityLabel={`Response rate: ${tier.label.toLowerCase()}. Typical inquiry response ${duration}.`} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: side || compact ? 5 : 7, minWidth: 0, maxWidth: '100%', borderRadius: side ? 12 : 14, borderWidth: 1, borderColor: tier.border, backgroundColor: tier.background, paddingLeft: side ? 8 : 5, paddingRight: side ? 5 : 10, paddingVertical: side || compact ? 4 : 6, shadowColor: tier.ink, shadowOpacity: side || compact ? 0 : .08, shadowRadius: 6, elevation: side || compact ? 0 : 1 }}>
+    {side ? detail : icon}{side ? icon : detail}
   </View>;
 }
