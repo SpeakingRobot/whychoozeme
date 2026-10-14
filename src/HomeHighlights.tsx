@@ -51,7 +51,10 @@ export default function HomeHighlights({ kind, compact, people, requests, catego
     <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 13, marginTop: 3, marginBottom: 15 }}>{subtitle}</Text>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 11 }}>{cards.map(card => <Pressable key={card.key} accessibilityRole="button" accessibilityLabel={`${card.title}, ${card.detail}`} onPress={card.onPress} style={{ width: compact ? '100%' : kind === 'standout' ? '18%' : '31%', flexGrow: 1, minWidth: kind === 'standout' ? 165 : 200, minHeight: 135, backgroundColor: '#fff', borderRadius: 18, borderWidth: 1, borderColor: color.line, padding: 16, justifyContent: 'space-between' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>{card.person ? <View style={{ width: 58, height: 58 }}><Portrait index={card.person.image} imageUrl={card.person.imageUrl} name={card.person.name} height={58} radius={13} /></View> : <View style={{ width: 58, height: 58, borderRadius: 15, backgroundColor: '#f2e6ff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 27 }}>{card.icon}</Text></View>}<View style={{ flex: 1 }}><Text style={{ color: color.purple, fontFamily: 'Nunito', fontSize: 10, fontWeight: '900', letterSpacing: 1 }}>{card.eyebrow}</Text><Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 18, fontWeight: '900', marginTop: 3 }} numberOfLines={1}>{card.title}</Text></View></View>
-      <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 13, marginTop: 13 }}>{card.detail}</Text>
+      {card.person ? <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 7, marginTop: 13 }}>
+        <View style={{ backgroundColor: '#fff1d9', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4 }}><Text style={{ color: '#865018', fontFamily: 'Nunito', fontSize: 12, fontWeight: '900' }}>✦ {card.person.role}</Text></View>
+        <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12 }}>⌖ {card.person.place}</Text>
+      </View> : <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 13, marginTop: 13 }}>{card.detail}</Text>}
     </Pressable>)}</View>
   </View>;
 }

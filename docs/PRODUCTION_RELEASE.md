@@ -16,7 +16,7 @@ The web app uses React Native Web, Vite, and the linked Supabase project `aspuzd
 
 1. Configure a custom SMTP provider in Supabase Auth and test signup confirmation and password reset on the public domain. The default email service is not suitable for open public registration.
 2. Make the Vercel production deployment publicly accessible. The configured Auth Site URL is `https://whychoozeme-sams-projects-76acb8bb.vercel.app/`, but the observed page redirected to Vercel Login (Deployment Protection). Update the Auth Site URL and redirect allowlist if a different public domain is used.
-3. Build and deploy the commit containing these changes. Vercel should use `npm run build:web`, `dist/`, and `vercel.json` for the admin route and security headers.
+3. Confirm Vercel deployed the latest `main` commit. The production code has been pushed; Vercel should use `npm run build:web`, `dist/`, and `vercel.json` for the admin route and security headers.
 4. Create two confirmed Auth accounts on the public domain. Give one a finder profile and the other a freelancer profile. Verify inquiry with an attachment, freelancer approval, chat unlock, contact sharing, offer, and draft agreement. An anonymous request to either Edge Function should return 401.
 5. Create and confirm the owner's Auth account, then insert its `user_id` in `public.admins` using the Supabase dashboard. The admin dashboard uses Auth plus this database role; no password is stored in the app.
 
