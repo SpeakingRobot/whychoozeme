@@ -18,8 +18,7 @@ export default function CarouselRow({ title, detail, people, width, cardWidth, o
   const offset = useRef(0);
   const pausedUntil = useRef(0);
   const step = cardWidth + 13;
-  const cards = people.length && people.length < 5 && people.every(person => person.demo)
-    ? Array.from({ length: 8 }, (_, index) => people[index % people.length]) : people;
+  const cards = people;
   const next = (direction = 1) => {
     const max = Math.max(0, cards.length * step - 13 - width);
     if (!max) return;

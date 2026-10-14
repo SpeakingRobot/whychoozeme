@@ -7,11 +7,12 @@ type Props = {
   name: string;
   busy: DateRange[];
   owner: boolean;
+  readOnly?: boolean;
   onBlock: (range: DateRange) => void;
   onRequest: (range: DateRange, note: string) => void;
 };
 
-export default function AvailabilityCalendar({ name, busy, owner, onBlock, onRequest }: Props) {
+export default function AvailabilityCalendar({ name, busy, owner, readOnly = false, onBlock, onRequest }: Props) {
   const today = isoDay(new Date());
   const [monthOffset, setMonthOffset] = useState(0);
   const [start, setStart] = useState<string | null>(null);
@@ -48,9 +49,9 @@ export default function AvailabilityCalendar({ name, busy, owner, onBlock, onReq
     })}</View>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 13, marginTop: 13 }}>{[['#ffe7e6', 'Booked / busy'], ['#f8f5fc', 'Available'], [color.purple, 'Selected']].map(([backgroundColor, title]) => <View key={title} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><View style={{ width: 11, height: 11, borderRadius: 4, backgroundColor }} /><Text style={{ fontFamily: 'Nunito', color: color.muted, fontSize: 11 }}>{title}</Text></View>)}</View>
     <Text style={{ fontFamily: 'Nunito', color: color.ink, marginTop: 17, fontWeight: '900', fontSize: 13 }}>{selected ? `${readableDay(selected.start)}${selected.end !== selected.start ? ` – ${readableDay(selected.end)}` : ''}` : 'Tap a start date, then an end date.'}</Text>
-    {!owner && <TextInput accessibilityLabel="Project details" value={note} onChangeText={setNote} placeholder="Tell them about your project and timing..." placeholderTextColor="#9693ab" multiline style={{ marginTop: 10, minHeight: 77, borderWidth: 1, borderColor: color.line, borderRadius: 14, padding: 12, fontFamily: 'Nunito', color: color.ink, textAlignVertical: 'top' }} />}
+    {!owner && !readOnly && <TextInput accessibilityLabel="Project details" value={note} onChangeText={setNote} placeholder="Tell them about your project and timing..." placeholderTextColor="#9693ab" multiline style={{ marginTop: 10, minHeight: 77, borderWidth: 1, borderColor: color.line, borderRadius: 14, padding: 12, fontFamily: 'Nunito', color: color.ink, textAlignVertical: 'top' }} />}
     {!!error && <Text style={{ fontFamily: 'Nunito', color: color.coral, fontSize: 12, marginTop: 9 }}>{error}</Text>}
-    <Button onPress={submit} style={{ alignSelf: 'flex-start', marginTop: 13 }}>{owner ? 'Mark as busy' : 'Request these dates'}</Button>
-    <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 11, marginTop: 8 }}>Walkthrough availability is saved on this device.</Text>
+    {!readOnly && <Button onPress={submit} style={{ alignSelf: 'flex-start', marginTop: 13 }}>{owner ? 'Mark as busy' : 'Request these dates'}</Button>}
+    <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 11, marginTop: 8 }}>{readOnly ? 'This calendar is an indicative preview. Confirm dates through an active freelancer’s Work together section.' : 'Walkthrough availability is saved on this device.'}</Text>
   </View>;
 }

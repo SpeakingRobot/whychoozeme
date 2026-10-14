@@ -10,15 +10,20 @@ import performance from '../assets/portfolio/performance.jpg';
 export type PortfolioPhoto = { source: number; label: string };
 export type ProfileReview = { id: string; freelancerId: string; author: string; rating: number; body: string; date: string; demo?: boolean };
 
+const demoGallery = (photos: PortfolioPhoto[]): PortfolioPhoto[] => Array.from({ length: 10 }, (_, index) => ({
+  ...photos[index % photos.length],
+  label: `${photos[index % photos.length].label} ${Math.floor(index / photos.length) + 1}`,
+}));
+
 export const demoPortfolio: Record<string, PortfolioPhoto[]> = {
-  tanya: [{ source: wedding, label: 'Wedding stories' }, { source: events, label: 'Celebrations in Goa' }],
-  arjun: [{ source: video, label: 'Event reel editing' }, { source: events, label: 'Celebration film' }],
-  meera: [{ source: design, label: 'Café identity' }, { source: video, label: 'Digital campaign' }],
-  ishaan: [{ source: guitar, label: 'One-to-one guitar lessons' }, { source: performance, label: 'Live music' }],
-  rohan: [{ source: events, label: 'Beach celebration' }, { source: wedding, label: 'Wedding coordination' }],
-  diya: [{ source: makeup, label: 'Bridal makeup' }, { source: wedding, label: 'Wedding day styling' }],
-  neel: [{ source: performance, label: 'Acoustic performance' }, { source: guitar, label: 'Guitar sessions' }],
-  sara: [{ source: tutoring, label: 'Personal tutoring' }, { source: design, label: 'Creative study materials' }],
+  tanya: demoGallery([{ source: wedding, label: 'Wedding stories' }, { source: events, label: 'Celebrations in Goa' }]),
+  arjun: demoGallery([{ source: video, label: 'Event reel editing' }, { source: events, label: 'Celebration film' }]),
+  meera: demoGallery([{ source: design, label: 'Café identity' }, { source: video, label: 'Digital campaign' }]),
+  ishaan: demoGallery([{ source: guitar, label: 'One-to-one guitar lessons' }, { source: performance, label: 'Live music' }]),
+  rohan: demoGallery([{ source: events, label: 'Beach celebration' }, { source: wedding, label: 'Wedding coordination' }]),
+  diya: demoGallery([{ source: makeup, label: 'Bridal makeup' }, { source: wedding, label: 'Wedding day styling' }]),
+  neel: demoGallery([{ source: performance, label: 'Acoustic performance' }, { source: guitar, label: 'Guitar sessions' }]),
+  sara: demoGallery([{ source: tutoring, label: 'Personal tutoring' }, { source: design, label: 'Creative study materials' }]),
 };
 
 export const demoReviews: ProfileReview[] = [

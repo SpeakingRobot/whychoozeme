@@ -31,15 +31,17 @@ export async function getFinder(userId: string) {
 }
 export async function getFreelancers(): Promise<Freelancer[]> {
   const client = assertDb();
-  const [profileResult, sampleResult] = await Promise.all([
+  const [profileResult, sampleResult, premiumResult] = await Promise.all([
     client.from('freelancer_profiles').select('*').order('created_at', { ascending: false }),
     client.from('sample_freelancers').select('*').order('sort_order', { ascending: true }),
+    client.from('user_entitlements').select('user_id').eq('premium', true),
   ]);
   const rows = unwrap(profileResult), samples = unwrap(sampleResult);
+  const premiumUsers = new Set((unwrap(premiumResult) || []).map((row: any) => row.user_id));
   const realPeople = (rows || []).map((row: any) => ({ id: row.user_id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality || row.taluka,
     lat: row.latitude, lon: row.longitude, rating: 0, reviews: 0, distance: 'Nearby',
-    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined }));
+    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id) }));
   const samplePeople = (samples || []).map((row: any) => ({ id: row.id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality,
     lat: row.latitude, lon: row.longitude, rating: Number(row.rating), reviews: row.review_count, distance: row.taluka,

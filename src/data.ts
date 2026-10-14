@@ -39,6 +39,7 @@ export type Freelancer = {
   work: string[];
   image: number;
   imageUrl?: string;
+  premium?: boolean;
   demo?: boolean;
   online?: boolean;
 };
