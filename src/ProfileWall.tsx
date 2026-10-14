@@ -29,7 +29,13 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
       <View style={{ flex: 1, gap: 12 }}>
         <View>
           <Heading size={narrow ? 29 : 37}>{profile.name}{profile.premium && <Text style={{ color: '#a26800', fontSize: 14 }}>  ★ Premium</Text>}</Heading>
-          <Text style={[text, { color: color.muted, fontSize: 15, marginTop: 2 }]}>{profile.role} · {profile.place}, Goa{profile.demo ? ' · Portfolio example' : ''}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+            <View accessibilityLabel={`Skill: ${profile.role}`} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, backgroundColor: '#fff1d9', borderWidth: 1, borderColor: '#f4d49b', borderRadius: 16, paddingHorizontal: 11, paddingVertical: 5 }}>
+              <Text style={{ color: '#bc7416', fontSize: 12 }}>✦</Text>
+              <Text style={[text, { color: '#865018', fontSize: 14, fontWeight: '900' }]}>{profile.role}</Text>
+            </View>
+            <Text style={[text, { color: color.muted, fontSize: 14 }]}>⌖ {profile.place}, Goa{profile.demo ? ' · Portfolio example' : ''}</Text>
+          </View>
         </View>
         <View style={{ backgroundColor: '#f7f0ff', borderLeftWidth: 4, borderLeftColor: color.purple, borderRadius: 16, paddingHorizontal: narrow ? 15 : 19, paddingVertical: 13 }}>
           <Text style={[text, { fontSize: narrow ? 15 : 17, lineHeight: narrow ? 23 : 26, fontWeight: '700' }]}>“{profile.why}”</Text>
