@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Category, Freelancer, RequestPost, talukaCenters, Taluka } from './data';
 import { liveEnabled, supabasePublishableKey, supabaseUrl } from './supabaseConfig';
+import { normalizeLinks, normalizeSoftware, PortfolioLink, SoftwareSkill } from './software';
 
 export const db: SupabaseClient | null = liveEnabled ? createClient(supabaseUrl, supabasePublishableKey, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: Platform.OS === 'web', ...(Platform.OS === 'web' ? {} : { storage: AsyncStorage }) },
@@ -41,7 +42,7 @@ export async function getFinder(userId: string) {
 export async function getFreelancers(): Promise<Freelancer[]> {
   const client = assertDb();
   const [profileResult, sampleResult, premiumResult, presenceResult, responseResult] = await Promise.all([
-    client.from('freelancer_profiles').select('user_id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,image_url,created_at').order('created_at', { ascending: false }),
+    client.from('freelancer_profiles').select('user_id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,description,software_skills,portfolio_links,portfolio,image_url,created_at').order('created_at', { ascending: false }),
     client.from('sample_freelancers').select('id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,card_line,image_index,rating,review_count,sort_order').order('sort_order', { ascending: true }),
     client.from('user_entitlements').select('user_id').eq('premium', true),
     client.from('freelancer_presence').select('freelancer_id,last_active_at'),
@@ -55,16 +56,24 @@ export async function getFreelancers(): Promise<Freelancer[]> {
   // Sample-only states disappear with the sample rows; real accounts always use tracked activity.
   const sampleActivityMinutes = [0, 18, 145, 46, 0, 1440, 35, 8];
   const sampleResponseMinutes = [6, 28, 12, 52, 9, 120, 14, 38];
+  const sampleSoftware: Record<string, SoftwareSkill[]> = {
+    photography: [{ name: 'Adobe Lightroom', website: 'https://www.adobe.com' }, { name: 'Adobe Photoshop', website: 'https://www.adobe.com' }],
+    video: [{ name: 'DaVinci Resolve', slug: 'davinciresolve' }, { name: 'Adobe Premiere Pro', website: 'https://www.adobe.com' }],
+    design: [{ name: 'Figma', slug: 'figma' }, { name: 'Canva', website: 'https://www.canva.com' }],
+    events: [{ name: 'Notion', slug: 'notion' }, { name: 'Canva', website: 'https://www.canva.com' }],
+    music: [{ name: 'Pro Tools', slug: 'protools' }, { name: 'Ableton Live', website: 'https://www.ableton.com' }],
+    tutoring: [{ name: 'Google Docs', website: 'https://docs.google.com' }, { name: 'Zoom', slug: 'zoom' }],
+  };
   const sampledAt = Date.now();
   const realPeople = (rows || []).map((row: any) => ({ id: row.user_id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality || row.taluka,
     lat: row.latitude, lon: row.longitude, rating: 0, reviews: 0, distance: 'Nearby',
-    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id), lastActiveAt: activity.get(row.user_id),
+    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', description: row.description || '', software: normalizeSoftware(row.software_skills), links: normalizeLinks(row.portfolio_links), work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id), lastActiveAt: activity.get(row.user_id),
     responseMinutes: responses.get(row.user_id)?.median_response_minutes, responseSamples: responses.get(row.user_id)?.response_count }));
   const samplePeople = (samples || []).map((row: any) => ({ id: row.id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality,
     lat: row.latitude, lon: row.longitude, rating: Number(row.rating), reviews: row.review_count, distance: row.taluka,
-    line: row.card_line, why: row.why_me, work: row.portfolio || [], image: row.image_index, demo: true,
+    line: row.card_line, why: row.why_me, software: sampleSoftware[row.category_slug] || [], work: row.portfolio || [], image: row.image_index, demo: true,
     lastActiveAt: new Date(sampledAt - sampleActivityMinutes[(Math.max(1, Number(row.sort_order) || 1) - 1) % sampleActivityMinutes.length] * 60_000).toISOString(),
     responseMinutes: sampleResponseMinutes[(Math.max(1, Number(row.sort_order) || 1) - 1) % sampleResponseMinutes.length] }));
   return [...realPeople, ...samplePeople];
@@ -80,7 +89,10 @@ export async function getCategories(): Promise<Category[]> {
 export async function saveFreelancer(userId: string, person: Freelancer) {
   unwrap(await assertDb().from('freelancer_profiles').upsert({ user_id: userId, display_name: person.name,
     role_title: person.role, category_slug: person.category, tags: person.tags, taluka: person.taluka,
-    locality: person.place, latitude: person.lat, longitude: person.lon, why_me: person.why, portfolio: person.work, image_url: person.imageUrl || null }));
+    locality: person.place, latitude: person.lat, longitude: person.lon, why_me: person.why, description: (person.description || '').slice(0, 5000), software_skills: normalizeSoftware(person.software), portfolio_links: normalizeLinks(person.links), portfolio: person.work, image_url: person.imageUrl || null }));
+}
+export async function savePortfolioLinks(userId: string, links: PortfolioLink[]) {
+  unwrap(await assertDb().from('freelancer_profiles').update({ portfolio_links: normalizeLinks(links) }).eq('user_id', userId));
 }
 export async function saveContact(userId: string, phone: string, whatsapp: string) {
   const auth = await account();

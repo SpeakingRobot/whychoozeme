@@ -11,6 +11,7 @@
     "build:web": "tsc --noEmit && vite build",
     "preview:web": "vite preview --host 127.0.0.1",
     "lint": "eslint App.tsx src __tests__ --quiet",
+    "generate:software-catalog": "node scripts/generate-software-catalog.mjs",
     "start": "react-native start",
     "test": "jest --cacheDirectory .jest-cache",
     "test:windows": "jest --config jest.config.windows.js"
@@ -52,6 +53,7 @@
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.2.3",
+    "simple-icons": "16.35.0",
     "typescript": "^5.8.3",
     "vite": "^8.3.4"
   },
