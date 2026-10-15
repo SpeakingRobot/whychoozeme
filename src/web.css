@@ -17,7 +17,9 @@ button, input, textarea { font-family: 'Nunito', sans-serif; }
 @keyframes wcm-highlight-icon { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes wcm-inquiry-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @keyframes wcm-online-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(18,168,99,.24); } 50% { box-shadow: 0 0 0 5px rgba(18,168,99,0); } }
-.wcm-response-meter:hover, .wcm-response-meter:focus-visible { border-color: var(--response-ink) !important; background-color: var(--response-background) !important; z-index: 20 !important; }
-.wcm-response-tooltip { opacity: 0; visibility: hidden; transform: translateY(3px); transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease; }
-.wcm-response-meter:hover .wcm-response-tooltip, .wcm-response-meter:focus-visible .wcm-response-tooltip { opacity: 1; visibility: visible; transform: translateY(0); }
+[data-response-tooltip="true"] { opacity: 0; visibility: hidden; transform: translateY(3px); transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease; }
+@media (hover: hover) and (pointer: fine) {
+  [data-response-meter="true"]:hover { border-color: var(--response-ink) !important; background-color: var(--response-background) !important; z-index: 20 !important; }
+  [data-response-meter="true"]:hover [data-response-tooltip="true"] { opacity: 1; visibility: visible; transform: translateY(0); }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
