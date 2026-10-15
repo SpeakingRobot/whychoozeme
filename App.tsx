@@ -25,8 +25,10 @@ import { listPortfolioAssets, PortfolioAsset, removePortfolioAsset, replacePortf
 import { addLeaveBlock, LeaveBlock, ownLeaveBlocks, publicBusyDays, removeLeaveBlock } from './src/availabilityApi';
 import { guestProfileVisit } from './src/guestAccess';
 import { DesktopCategoryNavigation, MobileCategoryNavigation } from './src/CategoryNavigation';
+import AuthPage from './src/AuthPage';
+import { AuthMode, authModeFromUrl, authUrl } from './src/authRoute';
 
-type Page = 'home' | 'search' | 'collection' | 'map' | 'account' | 'profile' | 'requests' | 'admin' | 'chats' | 'finderHub' | 'freelancerHub' | 'inquiries' | 'myPosts' | 'newRequest' | 'hiring';
+type Page = 'home' | 'auth' | 'search' | 'collection' | 'map' | 'account' | 'profile' | 'requests' | 'admin' | 'chats' | 'finderHub' | 'freelancerHub' | 'inquiries' | 'myPosts' | 'newRequest' | 'hiring';
 type Dialog = 'finder' | 'freelancer' | 'request' | 'notifications' | null;
 type InfoTopic = 'about' | 'contact' | 'mission';
 const infoLinks: { id: InfoTopic; label: string }[] = [{ id: 'about', label: 'Who are we?' }, { id: 'contact', label: 'Contact us' }, { id: 'mission', label: 'Our mission' }];
@@ -139,7 +141,8 @@ function Overlay({ visible, title, onClose, children, width = 560 }: { visible: 
 export default function App() {
   const { width: screenWidth } = useWindowDimensions();
   const compact = screenWidth < 680, tablet = screenWidth >= 680 && screenWidth < 1100, narrow = screenWidth < 560, pagePadding = narrow ? 14 : 24;
-  const [page, setPage] = useState<Page>('home');
+  const [page, setPage] = useState<Page>(() => Platform.OS === 'web' && globalThis.location.pathname === '/auth' ? 'auth' : 'home');
+  const authReturnPage = useRef<Page>('home');
   const [detailReturnPage, setDetailReturnPage] = useState<Page>('home');
   const [collection, setCollection] = useState<{ title: string; category: string }>({ title: 'All creatives', category: 'all' });
   const [chatReturnPage, setChatReturnPage] = useState<Page>('home');
@@ -165,9 +168,12 @@ export default function App() {
   const [infoDialog, setInfoDialog] = useState<InfoTopic | null>(null);
   const [livePeople, setLivePeople] = useState<Freelancer[]>([]);
   const [catalog, setCatalog] = useState<Category[]>(categories);
-  const [authMode, setAuthMode] = useState<'join' | 'signIn' | 'reset' | 'recovery'>('join');
+  const [authMode, setAuthMode] = useState<AuthMode>(() => Platform.OS === 'web' ? authModeFromUrl(globalThis.location.pathname, globalThis.location.search) : 'signIn');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMessage, setAuthMessage] = useState('');
   const [password, setPassword] = useState('');
   const [applications, setApplications] = useState<Record<string, any[]>>({});
+  const [connectingApplication, setConnectingApplication] = useState<string | null>(null);
   const [applyDraft, setApplyDraft] = useState<Record<string, string>>({});
   const [remoteNotices, setRemoteNotices] = useState<any[]>([]);
   const [admin, setAdmin] = useState(false);
@@ -186,6 +192,15 @@ export default function App() {
   const [requestTitle, setRequestTitle] = useState(''), [requestDetails, setRequestDetails] = useState(''), [requestCategory, setRequestCategory] = useState('design');
   const [chatPerson, setChatPerson] = useState<Freelancer | null>(null), [chatDraft, setChatDraft] = useState(''), [notice, setNotice] = useState(''), [formError, setFormError] = useState('');
   useEffect(() => { setFormError(''); }, [dialog]);
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onPopState = () => {
+      if (globalThis.location.pathname === '/auth') { setAuthMode(authModeFromUrl(globalThis.location.pathname, globalThis.location.search)); setPage('auth'); }
+      else setPage(current => current === 'auth' ? authReturnPage.current : current);
+    };
+    globalThis.addEventListener('popstate', onPopState);
+    return () => globalThis.removeEventListener('popstate', onPopState);
+  }, []);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(''), 6000); return () => clearTimeout(timer); }, [notice]);
   const refreshPeople = useCallback(async () => { try { setLivePeople(await live.getFreelancers()); } catch (error) { setNotice((error as Error).message); } }, []);
   const refreshAccount = useCallback(async (id: string) => {
@@ -201,8 +216,7 @@ export default function App() {
         }
       }
       const posts = await live.getRequests(id); setRequests(posts);
-      const mine = posts.filter(post => post.finderId === id);
-      const groups = await Promise.all(mine.map(async post => [post.id, await live.getApplications(post.id)] as const));
+      const groups = await Promise.all(posts.map(async post => [post.id, await live.getApplications(post.id)] as const));
       setApplications(Object.fromEntries(groups));
       setRemoteNotices(await live.getNotifications());
       const hasAdmin = await live.isAdmin(id); setAdmin(hasAdmin); if (hasAdmin) setSuggestions(await live.getCategorySuggestions());
@@ -210,7 +224,7 @@ export default function App() {
   }, [setFinder, setOwnProfile, setRequests]);
   const refreshInquiries = useCallback(async () => { if (!userId) return; try { setInquiries(await listInquiries()); } catch (error) { setNotice((error as Error).message); } }, [userId]);
   const loadChat = useCallback(async (person: Freelancer) => { if (!userId || !chatRoute) return; try { const rows = await live.getMessages(chatRoute.finderId, chatRoute.freelancerId); setMessages(rows.map((row: any) => ({ id: row.id, freelancerId: person.id, body: row.body, from: row.sender_id === chatRoute.finderId ? 'finder' : 'freelancer', time: new Date(row.created_at).getTime() }))); } catch (error) { setNotice((error as Error).message); } }, [userId, chatRoute]);
-  useEffect(() => { let active = true; live.account().then(({ user }) => { if (active) setUserId(user?.id || null); }).catch(error => setNotice(error.message)).finally(() => { if (active) setAuthReady(true); }); refreshPeople(); live.getCategories().then(setCatalog).catch(error => setNotice(error.message)); const subscription = live.db?.auth.onAuthStateChange((event, session) => { setUserId(session?.user?.id || null); if (event === 'PASSWORD_RECOVERY') { setAuthMode('recovery'); setDialog('finder'); } }); return () => { active = false; subscription?.data.subscription.unsubscribe(); }; }, [refreshPeople]);
+  useEffect(() => { let active = true; live.account().then(({ user }) => { if (active) setUserId(user?.id || null); }).catch(error => setNotice(error.message)).finally(() => { if (active) setAuthReady(true); }); refreshPeople(); live.getCategories().then(setCatalog).catch(error => setNotice(error.message)); const subscription = live.db?.auth.onAuthStateChange((event, session) => { setUserId(session?.user?.id || null); if (event === 'PASSWORD_RECOVERY') { setAuthMode('recovery'); setPage('auth'); if (Platform.OS === 'web') globalThis.history.replaceState({}, '', authUrl('recovery')); } }); return () => { active = false; subscription?.data.subscription.unsubscribe(); }; }, [refreshPeople]);
   useEffect(() => { if (!userId) { setFinder(null); setInquiries([]); setRequests([]); setRemoteNotices([]); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } refreshAccount(userId); refreshInquiries(); }, [userId, refreshAccount, refreshInquiries]);
   useEffect(() => { const timer = setInterval(refreshPeople, 60_000); return () => clearInterval(timer); }, [refreshPeople]);
   useEffect(() => {
@@ -277,12 +291,26 @@ export default function App() {
     { title: 'Event planners', detail: 'People who make good times happen.', category: 'events', people: homePeople.filter(person => person.category === 'events') },
     { title: 'Music teachers', detail: 'Find your rhythm with a local teacher.', category: 'music', people: homePeople.filter(person => person.category === 'music') },
   ];
+  const openAuth = (mode: AuthMode, limit = false) => {
+    if (page !== 'auth') authReturnPage.current = page;
+    setGuestLimitPrompt(limit); setFormError(''); setAuthMessage(''); setPassword(''); setAuthMode(mode); setDialog(null); setMenu(null); setPage('auth');
+    if (Platform.OS === 'web') globalThis.history.pushState({}, '', authUrl(mode));
+  };
+  const switchAuthMode = (mode: AuthMode) => {
+    setAuthMode(mode); setFormError(''); setAuthMessage(''); setPassword('');
+    if (Platform.OS === 'web') globalThis.history.replaceState({}, '', authUrl(mode));
+  };
+  const leaveAuth = () => {
+    setPage(authReturnPage.current === 'auth' ? 'home' : authReturnPage.current);
+    setGuestLimitPrompt(false); setFormError(''); setAuthMessage(''); setPassword('');
+    if (Platform.OS === 'web' && globalThis.location.pathname === '/auth') globalThis.history.replaceState({}, '', '/');
+  };
   const openCollection = (title: string, selectedCategory: string) => { setCollection({ title, category: selectedCategory }); setCategory(selectedCategory); setSearch(''); setSearchDraft(''); setPage('collection'); setMenu(null); };
   const openHighlightedCategory = (item: Category) => { if (compact) { setCategory(item.id); setSavedOnly(false); setSearch(''); setSearchDraft(''); setPage('search'); } else openCollection(item.label, item.id); };
   const openProfile = (person: Freelancer) => {
     if (!userId && authReady) {
       const visit = guestProfileVisit(Array.isArray(guestViewedProfileIds) ? guestViewedProfileIds : [], person.id);
-      if (!visit.allowed) { setGuestLimitPrompt(true); setAuthMode('signIn'); setDialog('finder'); return; }
+      if (!visit.allowed) { openAuth('signIn', true); return; }
       setGuestViewedProfileIds(visit.viewed);
     }
     if (page !== 'profile') setDetailReturnPage(page);
@@ -290,24 +318,34 @@ export default function App() {
   };
   const openApprovedChat = (item: Inquiry) => { const isFinder = item.finder_id === userId; const id = isFinder ? item.freelancer_id : item.finder_id; const person = allPeople.find(entry => entry.id === id) || finderChatPerson(id, item.finder_name); setChatRoute({ finderId: item.finder_id, freelancerId: item.freelancer_id }); setChatReturnPage(page); setChatPerson(person); setPage('chats'); setMenu(null); };
   const openContact = (person: Freelancer) => { const item = approvedPairs.find(row => (row.finder_id === userId && row.freelancer_id === person.id) || (row.freelancer_id === userId && row.finder_id === person.id)); if (item) openApprovedChat(item); else setNotice('Chat opens after the freelancer approves an inquiry.'); };
-  const openInquire = (person: Freelancer) => { if (!userId) { setGuestLimitPrompt(false); setAuthMode('signIn'); setDialog('finder'); return; } if (person.demo) { setNotice('This profile is not accepting inquiries yet.'); return; } if (!finder) { setDialog('finder'); return; } if (person.id === userId) { setNotice('This is your own profile.'); return; } const pending = inquiries.find(item => item.finder_id === userId && item.freelancer_id === person.id && item.status === 'pending'); if (pending) { setPage('inquiries'); return; } setInquiryPerson(person); };
+  const openInquire = (person: Freelancer) => { if (!userId) { openAuth('signIn'); return; } if (person.demo) { setNotice('This profile is not accepting inquiries yet.'); return; } if (!finder) { setDialog('finder'); return; } if (person.id === userId) { setNotice('This is your own profile.'); return; } const pending = inquiries.find(item => item.finder_id === userId && item.freelancer_id === person.id && item.status === 'pending'); if (pending) { setPage('inquiries'); return; } setInquiryPerson(person); };
   const selectChat = (person: Freelancer) => { const item = approvedPairs.find(row => (row.finder_id === userId && row.freelancer_id === person.id) || (row.freelancer_id === userId && row.finder_id === person.id)); if (!item) return; setChatRoute({ finderId: item.finder_id, freelancerId: item.freelancer_id }); setChatPerson(person); };
   const toggleFavorite = (id: string) => setFavorites(previous => previous.includes(id) ? previous.filter(value => value !== id) : [...previous, id]);
   const goHome = () => { setPage('home'); setProfile(null); setMenu(null); setCategory('all'); setSearch(''); setSearchDraft(''); };
   const goBackFromProfile = () => { setAvailabilityOpen(false); setPage(detailReturnPage); setProfile(null); setMenu(null); };
   const goMobileTab = (next: Page) => { if (next === 'search') setSavedOnly(false); setPage(next); setProfile(null); setMenu(null); };
-  const enterFinder = () => { setGuestLimitPrompt(false); setDialog('finder'); setMenu(null); };
-  const openAuth = (mode: 'signIn' | 'join') => { setGuestLimitPrompt(false); setFormError(''); setAuthMode(mode); setDialog('finder'); setMenu(null); };
+  const enterFinder = () => { if (!userId) openAuth('join'); else { setDialog('finder'); setMenu(null); } };
   const openInfo = (topic: InfoTopic) => { setMobileMenuOpen(false); setMenu(null); setInfoDialog(topic); };
-  const enterFreelancer = () => { if (!userId) { setDialog('finder'); setAuthMode('signIn'); } else { if (ownProfile) { openProfile(ownProfile); } else setDialog('freelancer'); } setMenu(null); };
-  const openChats = () => { if (!userId) { setAuthMode('signIn'); setDialog('finder'); return; } if (page !== 'chats') setChatReturnPage(page); setChatPerson(null); setChatRoute(null); refreshInquiries(); setPage('chats'); setMenu(null); };
+  const enterFreelancer = () => { if (!userId) openAuth('signIn'); else { if (ownProfile) { openProfile(ownProfile); } else setDialog('freelancer'); } setMenu(null); };
+  const openChats = () => { if (!userId) { openAuth('signIn'); return; } if (page !== 'chats') setChatReturnPage(page); setChatPerson(null); setChatRoute(null); refreshInquiries(); setPage('chats'); setMenu(null); };
   const closeChats = () => { setPage(chatReturnPage === 'chats' ? 'home' : chatReturnPage); setChatPerson(null); };
-  const openNewRequest = () => { setDialog(finder ? 'request' : 'finder'); setMenu(null); };
-  const registerFinder = async () => { if (authMode === 'recovery') { if (password.length < 8) { setFormError('Use at least 8 characters.'); return; } try { await live.updatePassword(password); setPassword(''); setAuthMode('signIn'); setDialog(null); setNotice('Password updated.'); } catch (error) { setFormError((error as Error).message); } return; }
-    if (!/^\S+@\S+\.\S+$/.test(finderEmail.trim()) || (authMode === 'join' && (finderName.trim().length < 2 || password.length < 8)) || (authMode === 'signIn' && !password)) { setFormError('Add a valid email, a name for joining, and a password of at least 8 characters for new accounts.'); return; }
-    try { if (authMode === 'reset') { await live.sendPasswordReset(finderEmail.trim()); setNotice('If this email has an account, a reset link is on its way.'); setAuthMode('signIn'); }
-      else if (authMode === 'signIn') { const result = await live.signIn(finderEmail.trim(), password); setUserId(result.user.id); setNotice('Signed in.'); }
-      else { const active = await live.signUpFinder(finderEmail.trim(), password, finderName.trim(), finderTaluka); if (active) { const auth = await live.account(); setUserId(auth.user?.id || null); setNotice('Finder profile created.'); } else setNotice('Check your email to confirm your account, then sign in.'); } setPassword(''); setDialog(null); } catch (error) { setFormError((error as Error).message); } };
+  const openNewRequest = () => { if (!userId) { openAuth('signIn'); return; } setDialog(finder ? 'request' : 'finder'); setMenu(null); };
+  const registerFinder = async () => {
+    if (authBusy) return;
+    setFormError(''); setAuthMessage('');
+    if (authMode === 'recovery' ? password.length < 8 : !/^\S+@\S+\.\S+$/.test(finderEmail.trim())) { setFormError(authMode === 'recovery' ? 'Use at least 8 characters for your new password.' : 'Enter a valid email address.'); return; }
+    if (authMode === 'join' && finderName.trim().length < 2) { setFormError('Enter your name to create an account.'); return; }
+    if (authMode === 'join' && password.length < 8) { setFormError('Use at least 8 characters for your password.'); return; }
+    if (authMode === 'signIn' && !password) { setFormError('Enter your password.'); return; }
+    setAuthBusy(true);
+    try {
+      if (authMode === 'recovery') { await live.updatePassword(password); leaveAuth(); setNotice('Password updated.'); }
+      else if (authMode === 'reset') { await live.sendPasswordReset(finderEmail.trim()); switchAuthMode('signIn'); setAuthMessage('If this email has an account, a reset link is on its way.'); }
+      else if (authMode === 'signIn') { const result = await live.signIn(finderEmail.trim(), password); setUserId(result.user.id); leaveAuth(); setNotice('Signed in.'); }
+      else { const active = await live.signUpFinder(finderEmail.trim(), password, finderName.trim(), finderTaluka); if (active) { const auth = await live.account(); setUserId(auth.user?.id || null); leaveAuth(); setNotice('Account created.'); } else { switchAuthMode('signIn'); setAuthMessage('Check your email to confirm your account, then sign in.'); } }
+    } catch (error) { setFormError((error as Error).message); }
+    finally { setAuthBusy(false); }
+  };
   const signOut = async () => { try { await live.signOut(); setUserId(null); setAdmin(false); setSuggestions([]); setMessages([]); setInquiries([]); setChatPerson(null); setChatRoute(null); setOwnProfile(null); setPortfolioAssets({}); setPage('home'); setNotice('Signed out.'); } catch (error) { setNotice((error as Error).message); } };
   const createFreelancer = async () => { if (!userId) { setDialog('finder'); return; } if (!formName.trim() || !formRole.trim() || formWhy.trim().length < 10 || (formCategory === 'other' && !customCategory.trim())) { setFormError('Complete your name, role, category and Why Choose Me statement (at least 10 characters).'); return; } if (formImage.trim() && !/^https:\/\/.+/.test(formImage.trim())) { setFormError('Use an HTTPS image URL.'); return; } const newCategory = formCategory === 'other' ? customCategory.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) : formCategory; if (newCategory.length < 2) { setFormError('Use at least two Latin letters or digits for the new category.'); return; } const taluka = finder?.taluka || 'Tiswadi'; const person: Freelancer = { id: userId, name: formName.trim(), role: formRole.trim(), category: newCategory, tags: [newCategory, formRole.trim().toLowerCase(), ...(formCategory === 'other' ? [customCategory.trim().toLowerCase()] : [])], taluka, place: taluka, lat: talukaCenters[taluka].lat, lon: talukaCenters[taluka].lon, rating: 0, reviews: 0, distance: 'New', line: formWhy.trim().slice(0, 85), why: formWhy.trim(), work: formWork.split(',').map(value => value.trim()).filter(Boolean).slice(0, 8), image: -1, imageUrl: formImage.trim() || undefined };
     try { await live.saveFreelancer(userId, person); if (formCategory === 'other') await live.suggestCategory(userId, customCategory.trim()); await refreshPeople(); } catch (error) { setFormError((error as Error).message); return; }
@@ -373,7 +411,20 @@ export default function App() {
     try { await addLeaveBlock(profile.id, range); await refreshAvailability(profile.id); setAvailabilityOpen(false); setNotice('Busy dates saved.'); }
     catch (error) { setNotice((error as Error).message); }
   };
-  const apply = async (post: RequestPost) => { if (!userId || !ownProfile) return; const note = (applyDraft[post.id] || '').trim(); if (note.length < 5) { setNotice('Write a short application message first.'); return; } try { await live.applyToRequest(post.id, userId, note); setApplyDraft(previous => ({ ...previous, [post.id]: '' })); setNotice('Application sent to the Finder.'); } catch (error) { setNotice((error as Error).message); } };
+  const apply = async (post: RequestPost) => { if (!userId || !ownProfile) return; const note = (applyDraft[post.id] || '').trim(); if (note.length < 5) { setNotice('Write a short approach message first.'); return; } try { await live.applyToRequest(post.id, userId, note); setApplications(previous => ({ ...previous, [post.id]: [...(previous[post.id] || []), { freelancer_id: userId, note, status: 'new' }] })); setApplyDraft(previous => ({ ...previous, [post.id]: '' })); setNotice('Approach sent to the Finder.'); } catch (error) { setNotice((error as Error).message); } };
+  const connectApplication = async (applicationId: string, person: Freelancer) => {
+    if (connectingApplication) return;
+    setConnectingApplication(applicationId);
+    try {
+      const pair = await live.connectRequestApplication(applicationId);
+      await refreshInquiries();
+      setApplications(previous => Object.fromEntries(Object.entries(previous).map(([id, rows]) => [id, rows.map(row => row.id === applicationId ? { ...row, status: 'shortlisted' } : row)])));
+      setChatRoute({ finderId: pair.finder_id, freelancerId: pair.freelancer_id });
+      setChatReturnPage('requests'); setChatPerson(person); setPage('chats');
+      setNotice(`Connected with ${person.name}. You can now discuss the work.`);
+    } catch (error) { setNotice((error as Error).message); }
+    finally { setConnectingApplication(null); }
+  };
   const reviewApplication = async (postId: string, id: string, status: 'shortlisted' | 'declined') => { try { await live.setApplicationStatus(id, status); setApplications(previous => ({ ...previous, [postId]: (previous[postId] || []).map(row => row.id === id ? { ...row, status } : row) })); } catch (error) { setNotice((error as Error).message); } };
   const reviewSuggestion = async (id: string, name: string, approve: boolean) => { try { await live.reviewCategory(id, name, approve); setSuggestions(previous => previous.filter(item => item.id !== id)); if (approve) setCatalog(await live.getCategories()); setNotice(approve ? 'Category added to the directory.' : 'Suggestion declined.'); } catch (error) { setNotice((error as Error).message); } };
   const menuMotion = Platform.OS === 'web' ? { animation: 'wcm-menu-in 180ms cubic-bezier(.2,.8,.2,1)' } as any : {};
@@ -425,6 +476,8 @@ export default function App() {
   const primaryMenuKeys = desktopMenuKeys.slice(0, primaryMenuCount);
   const secondaryMenuKeys = desktopMenuKeys.slice(primaryMenuCount);
   const desktopNavigation = { categories: catalog, onCategory: openHighlightedCategory };
+
+  if (page === 'auth') return <View style={{ flex: 1, height: Platform.OS === 'web' ? '100vh' as any : undefined, paddingTop: Platform.OS === 'ios' ? 26 : 0 }}><StatusBar barStyle="dark-content" backgroundColor="#fffaf4" /><AuthPage mode={authMode} compact={compact} signedIn={authReady && !!userId && authMode !== 'recovery'} name={finderName} email={finderEmail} password={password} taluka={finderTaluka} busy={authBusy} error={formError} message={authMessage} guestLimit={guestLimitPrompt} onName={setFinderName} onEmail={setFinderEmail} onPassword={setPassword} onTaluka={setFinderTaluka} onMode={switchAuthMode} onSubmit={registerFinder} onBack={leaveAuth} /></View>;
 
   return <View style={{ flex: 1, height: Platform.OS === 'web' ? '100vh' as any : undefined, overflow: 'hidden', backgroundColor: '#fffaf3', paddingTop: Platform.OS === 'ios' ? 26 : 0 }}><StatusBar barStyle="dark-content" backgroundColor="#fff" /><ScrollView ref={scrollRef} style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ minHeight: '100%' }}>
     {/* HEADER */}
@@ -517,7 +570,7 @@ export default function App() {
       {userId && <Pressable accessibilityRole="button" onPress={signOut} style={{ paddingVertical: 20, alignItems: 'center' }}><T style={{ color: color.muted, fontWeight: '900' }}>Sign out</T></Pressable>}
     </View>}
     {page === 'hiring' && <HiringDashboard userId={userId} freelancerId={ownProfile?.id || null} />}
-    {page === 'myPosts' && <View style={{ width: '100%', maxWidth: 1050, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 29, paddingBottom: 60 }}><Pressable onPress={() => setPage('account')}><T style={{ color: color.purple, fontWeight: '900' }}>← Your space</T></Pressable><View style={{ flexDirection: compact ? 'column' : 'row', justifyContent: 'space-between', alignItems: compact ? 'flex-start' : 'center', gap: 13, marginTop: 17, marginBottom: 20 }}><View><Heading size={30}>My requirements 📋</Heading><T style={{ color: color.muted, marginTop: 4 }}>Track the work you’ve shared with local creatives.</T></View><Button onPress={openNewRequest}>Post a requirement</Button></View>{finderPosts.map(post => <View key={post.id} style={{ backgroundColor: '#fff', borderRadius: 20, padding: 21, marginBottom: 12, borderWidth: 1, borderColor: color.line }}><TinyTag style={{ alignSelf: 'flex-start', marginBottom: 11 }}>YOUR POST</TinyTag><Heading size={21}>{post.title}</Heading><T style={{ color: color.muted, marginTop: 5 }}>{post.taluka} · {catalog.find(item => item.id === post.category)?.label || post.category}</T><T style={{ marginTop: 11 }}>{post.details}</T><T style={{ color: color.purple, marginTop: 13, fontWeight: '900', fontSize: 13 }}>Applications appear here when freelancers respond.</T></View>)}</View>}
+    {page === 'myPosts' && <View style={{ width: '100%', maxWidth: 1050, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 29, paddingBottom: 60 }}><Pressable onPress={() => setPage('account')}><T style={{ color: color.purple, fontWeight: '900' }}>← Your space</T></Pressable><View style={{ flexDirection: compact ? 'column' : 'row', justifyContent: 'space-between', alignItems: compact ? 'flex-start' : 'center', gap: 13, marginTop: 17, marginBottom: 20 }}><View><Heading size={30}>My requirements 📋</Heading><T style={{ color: color.muted, marginTop: 4 }}>Track the work you’ve shared with local creatives.</T></View><Button onPress={openNewRequest}>Post a requirement</Button></View>{finderPosts.map(post => <View key={post.id} style={{ backgroundColor: '#fff', borderRadius: 20, padding: 21, marginBottom: 12, borderWidth: 1, borderColor: color.line }}><TinyTag style={{ alignSelf: 'flex-start', marginBottom: 11 }}>YOUR POST</TinyTag><Heading size={21}>{post.title}</Heading><T style={{ color: color.muted, marginTop: 5 }}>{post.taluka} · {catalog.find(item => item.id === post.category)?.label || post.category}</T><T style={{ marginTop: 11 }}>{post.details}</T><T style={{ color: color.purple, marginTop: 16, fontWeight: '900', fontSize: 15 }}>Approached freelancers ({(applications[post.id] || []).length})</T>{(applications[post.id] || []).length === 0 && <T style={{ color: color.muted, marginTop: 5 }}>Matching freelancers will appear here when they approach you.</T>}{(applications[post.id] || []).map(item => { const person = allPeople.find(value => value.id === item.freelancer_id); const connected = approvedPairs.some(row => row.finder_id === userId && row.freelancer_id === item.freelancer_id); return <View key={item.id} style={{ marginTop: 9, padding: 12, backgroundColor: '#fbf9ff', borderWidth: 1, borderColor: '#e9e1f4', borderRadius: 16 }}><View style={{ flexDirection: 'row', gap: 11, alignItems: 'center' }}>{person && <View style={{ width: 58 }}><Portrait index={person.image} imageUrl={person.imageUrl} name={person.name} height={58} radius={12} /></View>}<View style={{ flex: 1 }}><T style={{ fontWeight: '900' }}>{person?.name || 'Freelancer'}</T><T style={{ color: color.muted, fontSize: 12 }}>{person ? `${person.role} · ${person.taluka}` : 'Approached your request'}</T></View><T style={{ color: connected ? '#26846c' : color.purple, fontSize: 12, fontWeight: '900' }}>{connected ? 'Connected' : item.status === 'declined' ? 'Declined' : 'Approached'}</T></View><T style={{ marginTop: 8 }} numberOfLines={3}>{item.note}</T>{person && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 11 }}><Button outline flat onPress={() => openProfile(person)} style={{ minHeight: 38 }}>View profile</Button>{item.status !== 'declined' && <Button flat disabled={connectingApplication === item.id} onPress={() => connected ? openContact(person) : connectApplication(item.id, person)} style={{ minHeight: 38 }}>{connected ? 'Open chat →' : connectingApplication === item.id ? 'Connecting…' : 'Connect →'}</Button>}</View>}</View>; })}</View>)}</View>}
     {page === 'inquiries' && userId && <InquiryInbox items={inquiries} ownId={userId} onRefresh={refreshInquiries} onChat={openApprovedChat} />}
     {page === 'profile' && profile && <View style={{ width: '100%', maxWidth: 1260, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 24, paddingBottom: 65 }}>
       <Pressable accessibilityRole="button" onPress={goBackFromProfile}><T style={{ color: color.purple, fontWeight: '900' }}>← Back to {detailReturnPage === 'map' ? 'map' : detailReturnPage === 'search' ? 'search' : detailReturnPage === 'collection' ? collection.title.toLowerCase() : 'freelancers'}</T></Pressable>
@@ -543,11 +596,18 @@ export default function App() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}><Heading size={21}>{post.title}</Heading><TinyTag>{requestReach(post)}</TinyTag></View>
         <T style={{ color: color.muted, marginTop: 5 }}>{catalog.find(item => item.id === post.category)?.label || post.category} · {post.taluka} · Posted by {post.finder}</T>
         <T style={{ marginTop: 12, lineHeight: 22 }}>{post.details}</T>
-        {post.finderId === userId ? <View style={{ marginTop: 16 }}><T style={{ color: color.purple, fontWeight: '900' }}>Applicants ({(applications[post.id] || []).length})</T>
-          {(applications[post.id] || []).map(item => { const person = allPeople.find(value => value.id === item.freelancer_id); return <View key={item.id} style={{ backgroundColor: '#f8f3fd', borderRadius: 14, padding: 12, marginTop: 8 }}>
-            <Pressable onPress={() => person && openProfile(person)}><T style={{ fontWeight: '900' }}>{person?.name || 'Freelancer'} →</T></Pressable><T style={{ marginTop: 5 }}>{item.note}</T><T style={{ color: color.muted, fontSize: 12, marginTop: 3 }}>Status: {item.status}</T>
-            {item.status === 'new' && <View style={{ flexDirection: 'row', gap: 7, marginTop: 9 }}><Button onPress={() => reviewApplication(post.id, item.id, 'shortlisted')}>Shortlist</Button><Button outline onPress={() => reviewApplication(post.id, item.id, 'declined')}>Decline</Button></View>}</View>; })}
-        </View> : ownProfile && post.finderId !== userId && requestMatchesFreelancer(post, ownProfile) ? <View style={{ marginTop: 16 }}><Field value={applyDraft[post.id] || ''} onChangeText={value => setApplyDraft(previous => ({ ...previous, [post.id]: value }))} placeholder="Tell the Finder why you're a good match" multiline /><Button onPress={() => apply(post)} style={{ marginTop: 9, alignSelf: 'flex-start' }}>Apply to request →</Button></View> :
+        {post.finderId === userId ? <View style={{ marginTop: 17 }}>
+          <T style={{ color: color.purple, fontWeight: '900', fontSize: 16 }}>Approached freelancers ({(applications[post.id] || []).length})</T>
+          {(applications[post.id] || []).length === 0 && <T style={{ color: color.muted, marginTop: 7 }}>Matching local freelancers can approach you here. Their profiles will appear below.</T>}
+          {(applications[post.id] || []).map(item => { const person = allPeople.find(value => value.id === item.freelancer_id); const connected = approvedPairs.some(row => row.finder_id === userId && row.freelancer_id === item.freelancer_id); return <View key={item.id} style={{ backgroundColor: '#fbf9ff', borderColor: '#e9e1f4', borderWidth: 1, borderRadius: 17, padding: narrow ? 12 : 15, marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {person && <View style={{ width: 66, height: 66, borderRadius: 13, overflow: 'hidden' }}><Portrait index={person.image} imageUrl={person.imageUrl} name={person.name} height={66} radius={13} /></View>}
+              <View style={{ flex: 1, minWidth: 0 }}><T style={{ fontWeight: '900', fontSize: 17 }} numberOfLines={1}>{person?.name || 'Freelancer'}</T><T style={{ color: color.muted, fontSize: 13, marginTop: 2 }} numberOfLines={1}>{person ? `${person.role} · ${person.taluka}` : 'Approached your request'}</T><T style={{ color: item.status === 'declined' ? color.muted : '#26846c', fontSize: 12, fontWeight: '900', marginTop: 3 }}>{connected ? 'Connected' : item.status === 'declined' ? 'Declined' : 'Ready to connect'}</T></View>
+            </View>
+            <T style={{ marginTop: 11, lineHeight: 20 }} numberOfLines={3}>{item.note}</T>
+            {person && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 13 }}><Button outline flat onPress={() => openProfile(person)} style={{ minHeight: 38 }}>View profile</Button>{item.status !== 'declined' && <Button flat disabled={connectingApplication === item.id} onPress={() => connected ? openContact(person) : connectApplication(item.id, person)} style={{ minHeight: 38 }}>{connected ? 'Open chat →' : connectingApplication === item.id ? 'Connecting…' : 'Connect →'}</Button>}{item.status === 'new' && <Button outline flat onPress={() => reviewApplication(post.id, item.id, 'declined')} style={{ minHeight: 38, borderColor: '#e7dce8' }} textStyle={{ color: color.muted }}>Decline</Button>}</View>}
+          </View>; })}
+        </View> : ownProfile && post.finderId !== userId && requestMatchesFreelancer(post, ownProfile) ? (applications[post.id] || []).some(item => item.freelancer_id === userId) ? <View style={{ alignSelf: 'flex-start', marginTop: 16, backgroundColor: '#edfbf3', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 9 }}><T style={{ color: '#167a55', fontWeight: '900', fontSize: 13 }}>✓ Approach sent to this Finder</T></View> : <View style={{ marginTop: 16 }}><Field value={applyDraft[post.id] || ''} onChangeText={value => setApplyDraft(previous => ({ ...previous, [post.id]: value }))} placeholder="Tell the Finder why you're a good match" multiline /><Button onPress={() => apply(post)} style={{ marginTop: 9, alignSelf: 'flex-start' }}>Approach this Finder →</Button></View> :
         <T style={{ color: color.purple, fontSize: 12, marginTop: 12, fontWeight: '900' }}>{`Matching freelancers in ${post.taluka} see this first. Reach widens each day.`}</T>}
       </View>) : <View style={{ alignItems: 'center', borderRadius: 24, backgroundColor: '#fff', padding: 48 }}><Text style={{ fontSize: 38 }}>📝</Text><Heading size={22}>{ownProfile ? 'No matching requests yet' : 'Tell local talent what you need'}</Heading><T style={{ color: color.muted, textAlign: 'center', marginTop: 6 }}>A clear brief posted 3–4 days ahead gives more nearby creatives time to respond.</T><Button onPress={openNewRequest} style={{ marginTop: 18 }}>Post your first request</Button></View>}
     </View>}
@@ -572,18 +632,8 @@ export default function App() {
     <Overlay visible={!!infoDialog} title={infoLinks.find(item => item.id === infoDialog)?.label || ''} onClose={() => setInfoDialog(null)} width={560}>
       {infoDialog && <View style={{ paddingBottom: 8 }}><View style={{ width: 52, height: 52, borderRadius: 17, backgroundColor: '#f2eaff', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}><InfoNavIcon name={infoDialog} size={27} color={color.purple} /></View><Heading size={21} style={{ marginBottom: 9 }}>{infoContent[infoDialog].lead}</Heading><T style={{ color: color.muted, lineHeight: 23 }}>{infoContent[infoDialog].detail}</T></View>}
     </Overlay>
-    <Overlay visible={dialog === 'finder'} title={authMode === 'recovery' ? 'Set a new password' : authMode === 'reset' ? 'Reset password' : finder ? 'Your Finder profile' : guestLimitPrompt ? 'Keep exploring ✦' : authMode === 'join' ? 'Become a Finder ✨' : 'Welcome back ✨'} onClose={() => { setDialog(null); setGuestLimitPrompt(false); }}>
-      {authMode === 'recovery' ? <><T style={{ color: color.muted, marginBottom: 18 }}>Enter a new password for your account.</T><Label>New password</Label><Field value={password} onChangeText={setPassword} placeholder="At least 8 characters" secureTextEntry /><Button onPress={registerFinder} style={{ marginTop: 14 }}>Save new password</Button></> :
-      finder ? <><T style={{ color: color.muted, marginBottom: 17 }}>Your account details.</T><Label>Name</Label><T>{finder.name}</T><View style={{ height: 13 }} /><Label>Email</Label><T>{finder.email}</T></> :
-      <><T style={{ color: color.muted, marginBottom: 18 }}>{authMode === 'reset' ? 'We will email a password reset link if the account exists.' : guestLimitPrompt ? 'You have explored three profiles. Sign in or create an account to view more profiles and send inquiries.' : 'Sign in or create an account to connect with local freelancers.'}</T>
-      {authMode === 'join' && <><Label>Your name</Label><Field value={finderName} onChangeText={setFinderName} placeholder="What should we call you?" /><View style={{ height: 13 }} /></>}
-      <Label>Email address</Label><Field value={finderEmail} onChangeText={setFinderEmail} placeholder="you@example.com" keyboardType="email-address" />
-      {authMode !== 'reset' && <><View style={{ height: 13 }} /><Label>Password</Label><Field value={password} onChangeText={setPassword} placeholder={authMode === 'join' ? 'At least 8 characters' : 'Your password'} secureTextEntry /></>}
-      {authMode === 'join' && <><View style={{ height: 13 }} /><Label>Your taluka</Label><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingBottom: 8 }}>{(Object.keys(talukaCenters) as Taluka[]).map(value => <Pressable key={value} onPress={() => setFinderTaluka(value)} style={{ paddingHorizontal: 12, paddingVertical: 9, borderRadius: 17, backgroundColor: finderTaluka === value ? color.purple : '#f4eff8' }}><T style={{ color: finderTaluka === value ? '#fff' : color.ink, fontSize: 13 }}>{value}</T></Pressable>)}</ScrollView></>}
-      {!!formError && <T style={{ color: color.coral, fontSize: 13, marginTop: 8 }}>{formError}</T>}
-      <Button onPress={registerFinder} style={{ marginTop: 14 }}>{authMode === 'reset' ? 'Send reset link' : authMode === 'join' ? 'Create Finder profile' : 'Sign in'}</Button>
-      <Pressable onPress={() => { setAuthMode(authMode === 'join' ? 'signIn' : 'join'); setFormError(''); }} style={{ alignItems: 'center', padding: 13 }}><T style={{ color: color.purple, fontWeight: '900' }}>{authMode === 'join' ? 'Already have an account? Sign in' : 'New here? Create an account'}</T></Pressable>
-      {authMode === 'signIn' && <Pressable onPress={() => { setAuthMode('reset'); setFormError(''); }} style={{ alignItems: 'center', padding: 8 }}><T style={{ color: color.purple, fontWeight: '900' }}>Forgot password?</T></Pressable>}</>}
+    <Overlay visible={dialog === 'finder'} title="Your Finder profile" onClose={() => setDialog(null)}>
+      <T style={{ color: color.muted, marginBottom: 17 }}>Your account details.</T><Label>Name</Label><T>{finder?.name || 'Not set'}</T><View style={{ height: 13 }} /><Label>Email</Label><T>{finder?.email || 'Not set'}</T>
     </Overlay>
     <Overlay visible={dialog === 'freelancer'} title="Show your talent 🌟" onClose={() => setDialog(null)}><T style={{ color: color.muted, marginBottom: 16 }}>Create a profile with your own “Why Choose Me” introduction.</T><Label>Your name</Label><Field value={formName} onChangeText={setFormName} placeholder="Your full name" /><View style={{ height: 11 }} /><Label>Your role</Label><Field value={formRole} onChangeText={setFormRole} placeholder="e.g. Graphic designer" /><View style={{ height: 11 }} /><Label>Category</Label><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingBottom: 8 }}>{catalog.filter(item => item.id !== 'all').map(item => <Pressable key={item.id} onPress={() => setFormCategory(item.id)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: formCategory === item.id ? color.purple : '#f4eff8' }}><T style={{ fontSize: 12, color: formCategory === item.id ? '#fff' : color.ink }}>{item.icon} {item.label}</T></Pressable>)}</ScrollView>{formCategory === 'other' && <><Field value={customCategory} onChangeText={setCustomCategory} placeholder="Name your skill or category" /><T style={{ color: color.muted, fontSize: 12, marginTop: 5 }}>New names go into a pending category list for review.</T></>}<View style={{ height: 11 }} /><Label>Profile photo URL (optional)</Label><Field value={formImage} onChangeText={setFormImage} placeholder="https://your-site.com/photo.jpg" /><View style={{ height: 11 }} /><Label>Portfolio highlights</Label><Field value={formWork} onChangeText={setFormWork} placeholder="e.g. Wedding shoots, portraits, brand work" /><T style={{ color: color.muted, fontSize: 12, marginTop: 4, marginBottom: 11 }}>Separate highlights with commas.</T><Label>Why choose you?</Label><Field value={formWhy} onChangeText={setFormWhy} placeholder="Tell people what makes your work special" multiline />{!!formError && <T style={{ color: color.coral, fontSize: 13, marginTop: 8 }}>{formError}</T>}<Button onPress={createFreelancer} style={{ marginTop: 17 }}>Create my profile</Button><T style={{ color: color.muted, fontSize: 12, marginTop: 11, textAlign: 'center' }}>Your profile is saved to your account.</T></Overlay>
     <Overlay visible={dialog === 'request'} title="Post a local request 📣" onClose={() => setDialog(null)}><T style={{ color: color.muted, marginBottom: 16 }}>People in your taluka see it first. Reach widens to all Goa over three days.</T><Label>What do you need?</Label><Field value={requestTitle} onChangeText={setRequestTitle} placeholder="e.g. Graphic designer for my café" /><View style={{ height: 11 }} /><Label>Category</Label><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingBottom: 8 }}>{catalog.filter(item => item.id !== 'all').map(item => <Pressable key={item.id} onPress={() => setRequestCategory(item.id)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: requestCategory === item.id ? color.purple : '#f4eff8' }}><T style={{ fontSize: 12, color: requestCategory === item.id ? '#fff' : color.ink }}>{item.icon} {item.label}</T></Pressable>)}</ScrollView><View style={{ height: 11 }} /><Label>Tell them about the work</Label><Field value={requestDetails} onChangeText={setRequestDetails} placeholder="Timeline, budget, style and what a great result looks like..." multiline /><T style={{ color: color.muted, fontSize: 12, marginTop: 10 }}>Tip: post 3–4 days before you need someone for the best local reach.</T>{!!formError && <T style={{ color: color.coral, fontSize: 13, marginTop: 8 }}>{formError}</T>}<Button onPress={postRequest} style={{ marginTop: 17 }}>Post request</Button></Overlay>

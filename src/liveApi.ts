@@ -110,6 +110,9 @@ export async function createRequest(userId: string, title: string, details: stri
 export async function applyToRequest(requestId: string, freelancerId: string, note: string) {
   unwrap(await assertDb().from('applications').insert({ request_id: requestId, freelancer_id: freelancerId, note }));
 }
+export async function connectRequestApplication(applicationId: string): Promise<{ finder_id: string; freelancer_id: string }> {
+  return unwrap(await assertDb().rpc('connect_request_application', { p_application: applicationId })) as { finder_id: string; freelancer_id: string };
+}
 export async function getApplications(requestId: string) {
   return unwrap(await assertDb().from('applications').select('id,freelancer_id,note,status,created_at').eq('request_id', requestId)) || [];
 }
