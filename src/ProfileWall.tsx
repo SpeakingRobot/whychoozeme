@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { Freelancer } from './data';
 import { Button, color, Heading, Portrait } from './UI';
 import { CalendarIcon } from './icons';
@@ -24,6 +24,7 @@ type Props = {
 export default function ProfileWall({ profile, compact, narrow, rating, reviewCount, saved, onChat, chatReady, onSave, onMap, onAvailability }: Props) {
   const portraitSize = narrow ? 156 : compact ? 190 : 216;
   const text = { fontFamily: 'Nunito' as const, color: color.ink };
+  const [availabilityHovered, setAvailabilityHovered] = useState(false);
 
   return <View style={{ padding: narrow ? 18 : 28 }}>
     <View style={{ flexDirection: narrow ? 'column' : 'row', alignItems: narrow ? 'stretch' : 'center', gap: narrow ? 18 : 28 }}>
@@ -57,7 +58,10 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
         <View style={{ backgroundColor: '#fff1d7', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9 }}><Text style={[text, { fontWeight: '900', color: '#975e00', fontSize: 16 }]}>{reviewCount ? `★ ${rating.toFixed(1)}` : '★ New'} <Text style={{ fontSize: 11, color: color.muted }}>· {reviewCount} reviews</Text></Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel={`I am located at ${profile.place}, show on map`} onPress={onMap} style={{ borderRadius: 13, backgroundColor: '#f3edff', paddingHorizontal: 12, paddingVertical: 10 }}><Text style={[text, { color: color.purple, fontWeight: '900', fontSize: 12 }]}>⌖ I am located at {profile.place} →</Text></Pressable>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-          <Button outline icon={<CalendarIcon color={color.purple} size={16} />} onPress={onAvailability} style={{ minHeight: 40 }} textStyle={{ fontSize: 12 }}>See availability</Button>
+          <Pressable accessibilityRole="button" accessibilityLabel="See availability" onPress={onAvailability} onHoverIn={() => setAvailabilityHovered(true)} onHoverOut={() => setAvailabilityHovered(false)} style={({ pressed }) => [{ minHeight: 40, paddingHorizontal: 17, borderRadius: 22, borderWidth: 1.4, borderColor: color.purple, backgroundColor: availabilityHovered ? color.purple : '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, transform: [{ scale: pressed ? .98 : availabilityHovered ? 1.025 : 1 }], shadowColor: color.purple, shadowOpacity: availabilityHovered ? .2 : 0, shadowRadius: availabilityHovered ? 10 : 0, elevation: availabilityHovered ? 2 : 0 }, Platform.OS === 'web' ? { transition: 'background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease' } as any : null]}>
+            <CalendarIcon color={availabilityHovered ? '#fff' : color.purple} size={16} />
+            <Text style={{ color: availabilityHovered ? '#fff' : color.purple, fontSize: 12, fontFamily: 'Nunito', fontWeight: '800' }}>See availability</Text>
+          </Pressable>
           <ResponseBadge person={profile} toolbar />
         </View>
       </View>
