@@ -165,6 +165,8 @@ export default function App() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [finder, setFinder] = useState<Finder | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [accountKind, setAccountKind] = useState<live.AccountKind | null>(null);
+  const freelancerSetupPrompted = useRef<Set<string>>(new Set());
   const [authReady, setAuthReady] = useState(false);
   const [guestLimitPrompt, setGuestLimitPrompt] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -209,14 +211,23 @@ export default function App() {
   const refreshAccount = useCallback(async (id: string) => {
     try {
       const people = await live.getFreelancers(); setLivePeople(people); setOwnProfile(people.find(person => person.id === id) || null);
+      const auth = await live.account();
+      const meta = auth.user?.user_metadata;
       const result = await live.getFinder(id);
-      if (result) { const auth = await live.account(); setFinder({ name: result.display_name, email: auth.user?.email || '', taluka: result.taluka }); setPlace(result.taluka); }
+      if (result) { setFinder({ name: result.display_name, email: auth.user?.email || '', taluka: result.taluka }); setPlace(result.taluka); }
       else {
-        const auth = await live.account(); const meta = auth.user?.user_metadata;
-        if (meta?.display_name && meta?.taluka) {
+        if (meta?.display_name && meta?.taluka && meta?.account_type !== 'freelancer') {
           await live.saveFinder(id, meta.display_name, meta.taluka);
           setFinder({ name: meta.display_name, email: auth.user?.email || '', taluka: meta.taluka }); setPlace(meta.taluka);
+        } else if (meta?.account_type === 'freelancer') {
+          setFinder(null);
+          if (meta.taluka) { setFinderTaluka(meta.taluka); setPlace(meta.taluka); }
         }
+      }
+      if (meta?.account_type === 'freelancer' && !people.some(person => person.id === id) && !freelancerSetupPrompted.current.has(id)) {
+        freelancerSetupPrompted.current.add(id);
+        setFormName(meta.display_name || '');
+        setDialog('freelancer');
       }
       const posts = await live.getRequests(id); setRequests(posts);
       const groups = await Promise.all(posts.map(async post => [post.id, await live.getApplications(post.id)] as const));
@@ -296,6 +307,7 @@ export default function App() {
   ];
   const openAuth = (mode: AuthMode, limit = false) => {
     if (page !== 'auth') authReturnPage.current = page;
+    setAccountKind(null);
     setGuestLimitPrompt(limit); setFormError(''); setAuthMessage(''); setPassword(''); setAuthMode(mode); setDialog(null); setMenu(null); setPage('auth');
     if (Platform.OS === 'web') globalThis.history.pushState({}, '', authUrl(mode));
   };
@@ -327,9 +339,9 @@ export default function App() {
   const goHome = () => { setPage('home'); setProfile(null); setMenu(null); setCategory('all'); setSearch(''); setSearchDraft(''); };
   const goBackFromProfile = () => { setAvailabilityOpen(false); setPage(detailReturnPage); setProfile(null); setMenu(null); };
   const goMobileTab = (next: Page) => { if (next === 'search') setSavedOnly(false); setPage(next); setProfile(null); setMenu(null); };
-  const enterFinder = () => { if (!userId) openAuth('join'); else { setDialog('finder'); setMenu(null); } };
+  const enterFinder = () => { if (!userId) { openAuth('join'); setAccountKind('finder'); } else { setDialog('finder'); setMenu(null); } };
   const openInfo = (topic: InfoTopic) => { setMobileMenuOpen(false); setMenu(null); setInfoDialog(topic); };
-  const enterFreelancer = () => { if (!userId) openAuth('signIn'); else { if (ownProfile) { openProfile(ownProfile); } else setDialog('freelancer'); } setMenu(null); };
+  const enterFreelancer = () => { if (!userId) { openAuth('join'); setAccountKind('freelancer'); } else { if (ownProfile) { openProfile(ownProfile); } else setDialog('freelancer'); } setMenu(null); };
   const openChats = () => { if (!userId) { openAuth('signIn'); return; } if (page !== 'chats') setChatReturnPage(page); setChatPerson(null); setChatRoute(null); refreshInquiries(); setPage('chats'); setMenu(null); };
   const closeChats = () => { setPage(chatReturnPage === 'chats' ? 'home' : chatReturnPage); setChatPerson(null); };
   const openNewRequest = () => { if (!userId) { openAuth('signIn'); return; } setDialog(finder ? 'request' : 'finder'); setMenu(null); };
@@ -338,6 +350,7 @@ export default function App() {
     setFormError(''); setAuthMessage('');
     if (authMode === 'recovery' ? password.length < 8 : !/^\S+@\S+\.\S+$/.test(finderEmail.trim())) { setFormError(authMode === 'recovery' ? 'Use at least 8 characters for your new password.' : 'Enter a valid email address.'); return; }
     if (authMode === 'join' && finderName.trim().length < 2) { setFormError('Enter your name to create an account.'); return; }
+    if (authMode === 'join' && !accountKind) { setFormError('Choose Finder or Freelancer to create an account.'); return; }
     if (authMode === 'join' && password.length < 8) { setFormError('Use at least 8 characters for your password.'); return; }
     if (authMode === 'signIn' && !password) { setFormError('Enter your password.'); return; }
     setAuthBusy(true);
@@ -345,12 +358,12 @@ export default function App() {
       if (authMode === 'recovery') { await live.updatePassword(password); leaveAuth(); setNotice('Password updated.'); }
       else if (authMode === 'reset') { await live.sendPasswordReset(finderEmail.trim()); switchAuthMode('signIn'); setAuthMessage('If this email has an account, a reset link is on its way.'); }
       else if (authMode === 'signIn') { const result = await live.signIn(finderEmail.trim(), password); setUserId(result.user.id); leaveAuth(); setNotice('Signed in.'); }
-      else { const active = await live.signUpFinder(finderEmail.trim(), password, finderName.trim(), finderTaluka); if (active) { const auth = await live.account(); setUserId(auth.user?.id || null); leaveAuth(); setNotice('Account created.'); } else { switchAuthMode('signIn'); setAuthMessage('Check your email to confirm your account, then sign in.'); } }
+      else if (accountKind) { const active = await live.signUpAccount(finderEmail.trim(), password, finderName.trim(), finderTaluka, accountKind); if (active) { const auth = await live.account(); setUserId(auth.user?.id || null); leaveAuth(); setNotice('Account created.'); } else { switchAuthMode('signIn'); setAuthMessage('Check your email to confirm your account, then sign in.'); } }
     } catch (error) { setFormError((error as Error).message); }
     finally { setAuthBusy(false); }
   };
-  const signOut = async () => { try { await live.signOut(); setUserId(null); setAdmin(false); setSuggestions([]); setMessages([]); setInquiries([]); setChatPerson(null); setChatRoute(null); setOwnProfile(null); setPortfolioAssets({}); setPage('home'); setNotice('Signed out.'); } catch (error) { setNotice((error as Error).message); } };
-  const createFreelancer = async () => { if (!userId) { setDialog('finder'); return; } if (!formName.trim() || !formRole.trim() || formWhy.trim().length < 10 || (formCategory === 'other' && !customCategory.trim())) { setFormError('Complete your name, role, category and Why Choose Me statement (at least 10 characters).'); return; } if (formDescription.length > 5000) { setFormError('Keep the description under 5,000 characters.'); return; } if (formImage.trim() && !publicHttpsUrl(formImage.trim())) { setFormError('Use a public HTTPS image URL.'); return; } const linkLines = formLinksText.split('\n').map(line => line.trim()).filter(Boolean); if (linkLines.length > 30) { setFormError('Add up to 30 portfolio links.'); return; } const links: PortfolioLink[] = []; for (const line of linkLines) { const [title, rawUrl] = line.includes('|') ? line.split('|', 2).map(part => part.trim()) : ['', line]; const url = publicHttpsUrl(rawUrl); if (!url) { setFormError(`Use a public HTTPS URL for: ${line.slice(0, 80)}`); return; } links.push({ title: (title || new URL(url).hostname).slice(0, 100), url }); } const newCategory = formCategory === 'other' ? customCategory.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) : formCategory; if (newCategory.length < 2) { setFormError('Use at least two Latin letters or digits for the new category.'); return; } const taluka = finder?.taluka || ownProfile?.taluka || 'Tiswadi'; const person: Freelancer = { id: userId, name: formName.trim(), role: formRole.trim(), category: newCategory, tags: [newCategory, formRole.trim().toLowerCase(), ...(formCategory === 'other' ? [customCategory.trim().toLowerCase()] : [])], taluka, place: ownProfile?.place || taluka, lat: talukaCenters[taluka].lat, lon: talukaCenters[taluka].lon, rating: ownProfile?.rating || 0, reviews: ownProfile?.reviews || 0, distance: 'New', line: formWhy.trim().slice(0, 85), why: formWhy.trim(), description: formDescription.trim(), software: formSoftware, links: normalizeLinks(links), work: formWork.split(',').map(value => value.trim()).filter(Boolean).slice(0, 8), image: ownProfile?.image ?? -1, imageUrl: formImage.trim() || undefined };
+  const signOut = async () => { try { await live.signOut(); freelancerSetupPrompted.current.clear(); setUserId(null); setAdmin(false); setSuggestions([]); setMessages([]); setInquiries([]); setChatPerson(null); setChatRoute(null); setOwnProfile(null); setPortfolioAssets({}); setPage('home'); setNotice('Signed out.'); } catch (error) { setNotice((error as Error).message); } };
+  const createFreelancer = async () => { if (!userId) { setDialog('finder'); return; } if (!formName.trim() || !formRole.trim() || formWhy.trim().length < 10 || (formCategory === 'other' && !customCategory.trim())) { setFormError('Complete your name, role, category and Why Choose Me statement (at least 10 characters).'); return; } if (formDescription.length > 5000) { setFormError('Keep the description under 5,000 characters.'); return; } if (formImage.trim() && !publicHttpsUrl(formImage.trim())) { setFormError('Use a public HTTPS image URL.'); return; } const linkLines = formLinksText.split('\n').map(line => line.trim()).filter(Boolean); if (linkLines.length > 30) { setFormError('Add up to 30 portfolio links.'); return; } const links: PortfolioLink[] = []; for (const line of linkLines) { const [title, rawUrl] = line.includes('|') ? line.split('|', 2).map(part => part.trim()) : ['', line]; const url = publicHttpsUrl(rawUrl); if (!url) { setFormError(`Use a public HTTPS URL for: ${line.slice(0, 80)}`); return; } links.push({ title: (title || new URL(url).hostname).slice(0, 100), url }); } const newCategory = formCategory === 'other' ? customCategory.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) : formCategory; if (newCategory.length < 2) { setFormError('Use at least two Latin letters or digits for the new category.'); return; } const taluka = finder?.taluka || ownProfile?.taluka || finderTaluka; const person: Freelancer = { id: userId, name: formName.trim(), role: formRole.trim(), category: newCategory, tags: [newCategory, formRole.trim().toLowerCase(), ...(formCategory === 'other' ? [customCategory.trim().toLowerCase()] : [])], taluka, place: ownProfile?.place || taluka, lat: talukaCenters[taluka].lat, lon: talukaCenters[taluka].lon, rating: ownProfile?.rating || 0, reviews: ownProfile?.reviews || 0, distance: 'New', line: formWhy.trim().slice(0, 85), why: formWhy.trim(), description: formDescription.trim(), software: formSoftware, links: normalizeLinks(links), work: formWork.split(',').map(value => value.trim()).filter(Boolean).slice(0, 8), image: ownProfile?.image ?? -1, imageUrl: formImage.trim() || undefined };
     try { await live.saveFreelancer(userId, person); if (formCategory === 'other') await live.suggestCategory(userId, customCategory.trim()); await refreshPeople(); } catch (error) { setFormError((error as Error).message); return; }
     setOwnProfile(person); setNotice('Freelancer profile saved.'); setDialog(null); openProfile(person); };
   const postRequest = async () => { if (!finder || !userId) { setDialog('finder'); return; } if (requestTitle.trim().length < 4 || requestDetails.trim().length < 10) { setFormError('Add a title and a description of at least 10 characters.'); return; }
@@ -480,7 +493,7 @@ export default function App() {
   const secondaryMenuKeys = desktopMenuKeys.slice(primaryMenuCount);
   const desktopNavigation = { categories: catalog, onCategory: openHighlightedCategory };
 
-  if (page === 'auth') return <View style={{ flex: 1, height: Platform.OS === 'web' ? '100vh' as any : undefined, paddingTop: Platform.OS === 'ios' ? 26 : 0 }}><StatusBar barStyle="dark-content" backgroundColor="#fffaf4" /><AuthPage mode={authMode} compact={compact} signedIn={authReady && !!userId && authMode !== 'recovery'} name={finderName} email={finderEmail} password={password} taluka={finderTaluka} busy={authBusy} error={formError} message={authMessage} guestLimit={guestLimitPrompt} onName={setFinderName} onEmail={setFinderEmail} onPassword={setPassword} onTaluka={setFinderTaluka} onMode={switchAuthMode} onSubmit={registerFinder} onBack={leaveAuth} /></View>;
+  if (page === 'auth') return <View style={{ flex: 1, height: Platform.OS === 'web' ? '100vh' as any : undefined, paddingTop: Platform.OS === 'ios' ? 26 : 0 }}><StatusBar barStyle="dark-content" backgroundColor="#fffaf4" /><AuthPage mode={authMode} compact={compact} signedIn={authReady && !!userId && authMode !== 'recovery'} name={finderName} email={finderEmail} password={password} taluka={finderTaluka} accountKind={accountKind} busy={authBusy} error={formError} message={authMessage} guestLimit={guestLimitPrompt} onName={setFinderName} onEmail={setFinderEmail} onPassword={setPassword} onTaluka={setFinderTaluka} onAccountKind={setAccountKind} onMode={switchAuthMode} onSubmit={registerFinder} onBack={leaveAuth} /></View>;
 
   return <View style={{ flex: 1, height: Platform.OS === 'web' ? '100vh' as any : undefined, overflow: 'hidden', backgroundColor: '#fffaf3', paddingTop: Platform.OS === 'ios' ? 26 : 0 }}><StatusBar barStyle="dark-content" backgroundColor="#fff" /><ScrollView ref={scrollRef} style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ minHeight: '100%' }}>
     {/* HEADER */}

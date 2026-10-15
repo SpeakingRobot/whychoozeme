@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import brandLogo from '../assets/whychoozeme-logo.png';
 import { AuthMode } from './authRoute';
+import type { AccountKind } from './liveApi';
 import { Taluka, talukaCenters } from './data';
 import { Button, color } from './UI';
 
@@ -13,6 +14,7 @@ type Props = {
   email: string;
   password: string;
   taluka: Taluka;
+  accountKind: AccountKind | null;
   busy: boolean;
   error: string;
   message: string;
@@ -21,6 +23,7 @@ type Props = {
   onEmail: (value: string) => void;
   onPassword: (value: string) => void;
   onTaluka: (value: Taluka) => void;
+  onAccountKind: (value: AccountKind) => void;
   onMode: (mode: AuthMode) => void;
   onSubmit: () => void;
   onBack: () => void;
@@ -30,7 +33,7 @@ const font = 'Nunito' as const;
 const fieldStyle = { height: 52, borderWidth: 1, borderColor: '#e6dff0', borderRadius: 15, backgroundColor: '#fff', paddingHorizontal: 16, color: color.ink, fontFamily: font, fontSize: 15 };
 const labelStyle = { color: color.ink, fontFamily: font, fontSize: 13, fontWeight: '900' as const, marginBottom: 7 };
 
-export default function AuthPage({ mode, compact, signedIn, name, email, password, taluka, busy, error, message, guestLimit, onName, onEmail, onPassword, onTaluka, onMode, onSubmit, onBack }: Props) {
+export default function AuthPage({ mode, compact, signedIn, name, email, password, taluka, accountKind, busy, error, message, guestLimit, onName, onEmail, onPassword, onTaluka, onAccountKind, onMode, onSubmit, onBack }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const joining = mode === 'join';
   const heading = mode === 'reset' ? 'Reset your password' : mode === 'recovery' ? 'Choose a new password' : joining ? 'Make room for your next opportunity.' : 'Good to see you again.';
@@ -67,6 +70,15 @@ export default function AuthPage({ mode, compact, signedIn, name, email, passwor
             <Text style={{ color: color.muted, fontFamily: font, fontSize: 14, lineHeight: 21, marginTop: 9, marginBottom: 24 }}>{signedIn ? 'Your account is ready. Continue exploring local talent.' : description}</Text>
 
             {signedIn ? <Button onPress={onBack}>Continue to WhyChoozeMe →</Button> : <>
+              {joining && <View style={{ marginBottom: 18 }}>
+                <Text style={labelStyle}>I’m joining as</Text>
+                <View style={{ flexDirection: compact ? 'column' : 'row', gap: 9 }}>
+                  {([['finder', 'Finder', 'Find local talent and share what you need.', '⌕'], ['freelancer', 'Freelancer', 'Show your work and meet local clients.', '✦']] as const).map(([value, title, detail, icon]) => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={title} accessibilityState={{ selected: accountKind === value }} onPress={() => onAccountKind(value)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, minHeight: 76, borderRadius: 15, borderWidth: 1.5, borderColor: accountKind === value ? color.purple : '#e8e1ee', backgroundColor: accountKind === value ? '#f5efff' : '#fff' }}>
+                    <View style={{ width: 33, height: 33, alignItems: 'center', justifyContent: 'center', borderRadius: 11, backgroundColor: accountKind === value ? '#e7d9ff' : '#f5f1f7' }}><Text style={{ color: color.purple, fontSize: 19, fontWeight: '900' }}>{icon}</Text></View>
+                    <View style={{ flex: 1 }}><Text style={{ color: color.ink, fontFamily: font, fontWeight: '900', fontSize: 14 }}>{title}</Text><Text style={{ color: color.muted, fontFamily: font, fontSize: 11, lineHeight: 15, marginTop: 2 }}>{detail}</Text></View>
+                  </Pressable>)}
+                </View>
+              </View>}
               {joining && <View style={{ marginBottom: 15 }}><Text style={labelStyle}>Your name</Text><TextInput accessibilityLabel="Your name" value={name} onChangeText={onName} placeholder="What should we call you?" placeholderTextColor="#9992a8" autoCapitalize="words" autoComplete="name" style={fieldStyle} /></View>}
               {mode !== 'recovery' && <View style={{ marginBottom: 15 }}><Text style={labelStyle}>Email address</Text><TextInput accessibilityLabel="Email address" value={email} onChangeText={onEmail} placeholder="you@example.com" placeholderTextColor="#9992a8" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" style={fieldStyle} /></View>}
               {mode !== 'reset' && <View style={{ marginBottom: 15 }}><Text style={labelStyle}>{mode === 'recovery' ? 'New password' : 'Password'}</Text><View style={{ position: 'relative' }}><TextInput accessibilityLabel={mode === 'recovery' ? 'New password' : 'Password'} value={password} onChangeText={onPassword} onSubmitEditing={onSubmit} placeholder={joining || mode === 'recovery' ? 'At least 8 characters' : 'Enter your password'} placeholderTextColor="#9992a8" secureTextEntry={!showPassword} autoCapitalize="none" autoComplete={joining ? 'new-password' : 'current-password'} style={[fieldStyle, { paddingRight: 65 }]} /><Pressable accessibilityRole="button" accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} onPress={() => setShowPassword(value => !value)} style={{ position: 'absolute', right: 10, top: 8, paddingHorizontal: 9, height: 36, justifyContent: 'center' }}><Text style={{ color: color.purple, fontFamily: font, fontSize: 12, fontWeight: '900' }}>{showPassword ? 'Hide' : 'Show'}</Text></Pressable></View></View>}

@@ -14,11 +14,13 @@ function assertDb() { if (!db) throw new Error('Supabase project settings are mi
 function unwrap<T>(result: { data?: T; error: { message: string } | null }): T { if (result.error) throw new Error(result.error.message); return result.data as T; }
 
 export async function account() { const result = await assertDb().auth.getUser(); if (result.error?.name === 'AuthSessionMissingError') return { user: null }; if (result.error) throw new Error(result.error.message); return result.data; }
-export async function signUpFinder(email: string, password: string, name: string, taluka: Taluka) {
+export type AccountKind = 'finder' | 'freelancer';
+
+export async function signUpAccount(email: string, password: string, name: string, taluka: Taluka, accountKind: AccountKind) {
   const client = assertDb();
-  const data = unwrap(await client.auth.signUp({ email, password, options: { data: { display_name: name, taluka },
+  const data = unwrap(await client.auth.signUp({ email, password, options: { data: { display_name: name, taluka, account_type: accountKind },
     ...(Platform.OS === 'web' ? { emailRedirectTo: globalThis.location.origin } : {}) } }));
-  if (data.session && data.user) await saveFinder(data.user.id, name, taluka);
+  if (accountKind === 'finder' && data.session && data.user) await saveFinder(data.user.id, name, taluka);
   return !!data.session;
 }
 export async function signIn(email: string, password: string) { const result = await assertDb().auth.signInWithPassword({ email, password }); if (result.error) throw new Error(result.error.message); return result.data; }

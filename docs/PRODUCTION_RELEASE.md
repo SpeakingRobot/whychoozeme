@@ -5,11 +5,14 @@ The web app uses React Native Web, Vite, and the linked Supabase project `aspuzd
 ## Verified in the workspace
 
 - `npm run lint` passes.
-- `npm run build` passes and writes `dist/`.
-- `npm test -- --runInBand` passes all 27 tests in five suites.
+- `npm run build:web` passes and writes `dist/`.
+- `npm test -- --runInBand` passes all 35 tests in nine suites.
 - `admin-console` and `hiring-documents` Edge Functions were updated in the Supabase dashboard. The dashboard reported successful deployment for both on 2026-10-14.
 - Supabase Auth secure password change was enabled and the dashboard confirmed the settings update.
 - The owner applied `supabase/migrations/20261014_production_media_security.sql` to `main Production`. A read-only dashboard audit found 42 public tables, none without RLS, 42 suspended-user policies and write triggers, the portfolio bucket, calendar RPC, eight example profiles, and three preserved example requests. An additional `20261014_restrict_rpc_grants.sql` change removed Supabase's explicit anonymous EXECUTE grants from account and agreement RPCs. Spot checks confirmed anonymous access denied and authenticated access retained for inquiry decisions and hiring proposals.
+- On 2026-10-16, a read-only SQL Editor audit on `main Production` passed `supabase/tests/production_assertions.sql`. The `freelancer_profiles` description, software, and link columns are present. The finder and freelancer profile tables, freelancer presence table, response statistics function, request-application connection function, and matching application policy are present. These migrations were applied through SQL Editor; the Supabase CLI migration history has not been reconciled, so do not use `supabase db push` against this project until it has been.
+- Signup now records the selected Finder or Freelancer account type in Auth metadata. This UI change needs no new database migration. A Finder profile is created on signup or first confirmed sign-in; a Freelancer is prompted to complete a work profile after sign-in.
+- On 2026-10-16, the Supabase Auth dashboard still showed custom SMTP disabled. Opening the configured Auth Site URL still redirected to Vercel Login because deployment protection is enabled. Public signup confirmation and password reset have therefore not been verified end to end.
 - `npm audit --omit=dev` could not reach the npm advisory endpoint from this workspace. Run it from a networked environment before public launch.
 
 ## Required before public signups
