@@ -72,6 +72,12 @@ export async function generateAgreement(agreementId: string) {
   if (data?.error) throw new Error(data.error);
   return data;
 }
+export async function agreementReadiness(agreementId: string) {
+  const { data, error } = await client().functions.invoke('hiring-documents', { body: { action: 'readiness', agreementId } });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  return data as { finderName:boolean; freelancerName:boolean; finderImage:boolean; freelancerImage:boolean };
+}
 export async function exportEvidence(agreementId: string) {
   const { data, error } = await client().functions.invoke('hiring-documents', { body: { action: 'evidence', agreementId } });
   if (error) throw new Error(error.message);

@@ -3,42 +3,78 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 import { ProviderNotConfigured, signingProvider } from './signingProvider.ts';
+import { brandLogoBase64 } from './brandLogo.ts';
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, apikey, content-type' } });
 const error = (message: string, status = 400) => json({ error: message }, status);
 const sha256 = async (data: Uint8Array) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', data))].map(b => b.toString(16).padStart(2, '0')).join('');
 const get = (result: { data: any; error: { message: string } | null }): any => { if (result.error) throw new Error(result.error.message); return result.data; };
 
-async function pdfFor(body: string) {
+async function pdfFor(body: string, signatures: { finder: Uint8Array; freelancer: Uint8Array; finderName: string; freelancerName: string }) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const logo = await pdf.embedPng(Uint8Array.from(atob(brandLogoBase64), character => character.charCodeAt(0)));
+  const finderImage = await pdf.embedPng(signatures.finder);
+  const freelancerImage = await pdf.embedPng(signatures.freelancer);
   const margin = 51, width = 595, height = 842;
-  let page = pdf.addPage([width, height]), y = height - 104;
-  const header = () => {
-    page.drawRectangle({x:0,y:height-72,width,height:72,color:rgb(.17,.12,.43)});
-    page.drawText('WhyChooseMe', {x:margin,y:height-43,size:21,font:bold,color:rgb(1,1,1)});
-    page.drawText('AGREEMENT DRAFT', {x:width-190,y:height-41,size:10,font:bold,color:rgb(1,.77,.69)});
-    page.drawLine({start:{x:margin,y:height-88},end:{x:width-margin,y:height-88},thickness:1,color:rgb(.89,.85,.94)});
+  let page = pdf.addPage([width, height]), y = height - 173;
+  const header = (first = false) => {
+    page.drawRectangle({x:0,y:height-8,width,height:8,color:rgb(.45,.22,.96)});
+    page.drawImage(logo, { x: (width-203)/2, y: height-76, width:203, height:41 });
+    if (first) {
+      const title = 'AGREEMENT DRAFT';
+      page.drawText(title, {x:(width-bold.widthOfTextAtSize(title,19))/2,y:height-112,size:19,font:bold,color:rgb(.10,.09,.28)});
+      page.drawText('Freelance services  |  for review by both parties', {x:165,y:height-132,size:9,font,color:rgb(.42,.39,.52)});
+    }
+    page.drawLine({start:{x:margin,y:height-(first?148:93)},end:{x:width-margin,y:height-(first?148:93)},thickness:1,color:rgb(.87,.84,.94)});
   };
-  header();
-  const line = (text: string, size = 10, strong = false) => {
-    if (y < 72) { page = pdf.addPage([width,height]); y = height-104; header(); }
-    page.drawText(text, { x: margin, y, size, font: strong ? bold : font, color: rgb(.10,.12,.24) }); y -= size + 7;
+  header(true);
+  const nextPage = () => { page = pdf.addPage([width,height]); y = height-117; header(); };
+  const ensure = (needed: number) => { if (y - needed < 75) nextPage(); };
+  const line = (value: string, size = 10, strong = false) => {
+    ensure(size+12);
+    page.drawText(value, { x: margin, y, size, font: strong ? bold : font, color: strong ? rgb(.25,.13,.57) : rgb(.14,.15,.27) }); y -= size + 7;
   };
-  line('Freelance Services Agreement - Draft for Legal Review', 13, true); y -= 17;
   for (const paragraph of body.split('\n')) {
-    if (!paragraph.trim()) { y -= 9; continue; }
+    if (!paragraph.trim()) { y -= 7; continue; }
+    if (/^5\. Execution/.test(paragraph) && y < 300) nextPage();
     const strong = /^\d+\.|^AGREEMENT|^HIRER|^FREELANCER|^DOCUMENT/.test(paragraph);
+    if (/^\d+\./.test(paragraph)) {
+      ensure(48); y -= 7;
+      page.drawRectangle({x:margin-9,y:y-8,width:4,height:23,color:rgb(1,.32,.43)});
+    }
     const words = paragraph.replace(/[^\x20-\x7e]/g, '-').split(/\s+/);
+    const measureFont = strong ? bold : font;
     let current = '';
-    for (const word of words) {
+    for (let word of words) {
+      while (measureFont.widthOfTextAtSize(word, strong ? 11 : 10) > width-2*margin) {
+        if (current) { line(current,strong ? 11 : 10,strong); current=''; }
+        let cut=1;
+        while (cut<word.length && measureFont.widthOfTextAtSize(`${word.slice(0,cut+1)}-`,strong ? 11 : 10)<width-2*margin) cut++;
+        line(`${word.slice(0,cut)}-`,strong ? 11 : 10,strong);
+        word=word.slice(cut);
+      }
       const candidate = current ? `${current} ${word}` : word;
-      if (font.widthOfTextAtSize(candidate, strong ? 11 : 10) > width - 2*margin && current) { line(current, strong ? 11 : 10, strong); current = word; }
+      if (measureFont.widthOfTextAtSize(candidate, strong ? 11 : 10) > width - 2*margin && current) { line(current, strong ? 11 : 10, strong); current = word; }
       else current = candidate;
     }
     if (current) line(current, strong ? 11 : 10, strong);
   }
+  ensure(148); y -= 13;
+  line('VISUAL SIGNATURE IMAGES', 11, true);
+  line('Uploaded by each account holder. These images do not verify identity or complete eSign.', 8);
+  y -= 5; ensure(98);
+  const signatureBox = (x: number, image: typeof finderImage, name: string, role: string) => {
+    page.drawRectangle({x,y:y-90,width:233,height:91,borderColor:rgb(.87,.83,.94),borderWidth:1,color:rgb(.99,.98,1)});
+    const dimensions = image.scaleToFit(190,55);
+    page.drawImage(image,{x:x+(233-dimensions.width)/2,y:y-61+(55-dimensions.height)/2,width:dimensions.width,height:dimensions.height});
+    page.drawText(role,{x:x+11,y:y-75,size:8,font:bold,color:rgb(.39,.27,.67)});
+    page.drawText(name.replace(/[^\x20-\x7e]/g,'-').slice(0,36),{x:x+11,y:y-86,size:8,font,color:rgb(.12,.11,.23)});
+  };
+  signatureBox(margin,finderImage,signatures.finderName,'FINDER / HIRER');
+  signatureBox(width-margin-233,freelancerImage,signatures.freelancerName,'FREELANCER');
+  y -= 110;
   pdf.getPages().forEach((p,index) => {
     p.drawLine({start:{x:margin,y:50},end:{x:width-margin,y:50},thickness:.7,color:rgb(.88,.85,.92)});
     p.drawText('Private draft - not fully signed', {x:margin,y:34,size:8,font,color:rgb(.44,.43,.52)});
@@ -83,7 +119,7 @@ function bodyFrom(agreement: any, proposal: any, finder: any, freelancer: any) {
     'This draft is a record of agreed commercial terms for review. It is not marked fully signed or active. Both parties must approve this exact document. Provider verified signing and any required stamping, identity checks, registration or witnessing must be completed separately.',
     '',
     `Document status: ${agreement.status}. Legal compliance: ${agreement.compliance_status}.`,
-    'Freelancer signature: Pending. Hirer signature: Pending.',
+    'Both parties uploaded visual signature images for this review copy. Provider-verified signing remains pending.',
   ].join('\n');
 }
 
@@ -107,6 +143,15 @@ Deno.serve(async request => {
     const proposal = get(await server.from('proposal_versions').select('*').eq('id', agreement.proposal_id).single());
     if (proposal.status !== 'accepted' || hiring.accepted_proposal_id !== proposal.id) return error('Accepted version mismatch', 409);
 
+    if (action === 'readiness') {
+      const [identities,assets] = await Promise.all([
+        server.from('agreement_party_identity').select('user_id').eq('agreement_id',agreementId),
+        server.from('signature_assets').select('user_id').in('user_id',[hiring.finder_id,hiring.freelancer_id]),
+      ]);
+      const names = get(identities) as {user_id:string}[], images = get(assets) as {user_id:string}[];
+      return json({finderName: names.some(row=>row.user_id===hiring.finder_id),freelancerName:names.some(row=>row.user_id===hiring.freelancer_id),finderImage:images.some(row=>row.user_id===hiring.finder_id),freelancerImage:images.some(row=>row.user_id===hiring.freelancer_id)});
+    }
+
     if (action === 'generate') {
       const existing = get(await server.from('agreement_documents').select('*').eq('agreement_id',agreementId).order('version',{ascending:false}).limit(1));
       if (existing.length) return json({ documentId: existing[0].id, status: 'already_generated' });
@@ -115,9 +160,24 @@ Deno.serve(async request => {
       const finder = identities.find((p: any) => p.user_id === hiring.finder_id);
       const freelancer = identities.find((p: any) => p.user_id === hiring.freelancer_id);
       if (!finder || !freelancer) return error('Both parties must enter legal names before document generation', 422);
+      const assets = get(await server.from('signature_assets').select('user_id,storage_path,legal_name').in('user_id',[hiring.finder_id,hiring.freelancer_id]));
+      const assetFor = (id: string, name: string) => {
+        const asset = assets.find((row: any) => row.user_id === id);
+        if (!asset || !asset.storage_path.startsWith(`${id}/signatures/`)) throw new Error('Both parties must upload their own signature images before generating the PDF');
+        if (asset.legal_name.trim().toLowerCase() !== name.trim().toLowerCase()) throw new Error('The uploaded signature names must match the saved agreement identities');
+        return asset.storage_path as string;
+      };
+      const paths = [assetFor(hiring.finder_id,finder.legal_name),assetFor(hiring.freelancer_id,freelancer.legal_name)];
+      const images = await Promise.all(paths.map(async path => {
+        const result = await server.storage.from('agreement-private').download(path);
+        if (result.error || !result.data) throw new Error('Could not load a signature image');
+        const bytes = new Uint8Array(await result.data.arrayBuffer());
+        if (bytes.length > 1024*1024 || bytes.length < 8 || ![137,80,78,71,13,10,26,10].every((part,index) => bytes[index]===part)) throw new Error('Signature images must be PNG files under 1 MB');
+        return bytes;
+      }));
       const body = bodyFrom(agreement,proposal,finder,freelancer);
       const bodyHash = await sha256(new TextEncoder().encode(body));
-      const pdf = await pdfFor(body), pdfHash = await sha256(pdf);
+      const pdf = await pdfFor(body,{finder:images[0],freelancer:images[1],finderName:finder.legal_name,freelancerName:freelancer.legal_name}), pdfHash = await sha256(pdf);
       const path = `${agreementId}/draft-v1-${pdfHash.slice(0,16)}.pdf`;
       const upload = await server.storage.from('agreement-private').upload(path,pdf,{contentType:'application/pdf',upsert:false});
       if (upload.error) throw new Error(upload.error.message);

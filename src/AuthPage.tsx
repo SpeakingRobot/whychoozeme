@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import brandLogo from '../assets/whychoozeme-logo.png';
 import { AuthMode } from './authRoute';
 import { Taluka, talukaCenters } from './data';
 import { Button, color } from './UI';
@@ -38,9 +39,8 @@ export default function AuthPage({ mode, compact, signedIn, name, email, passwor
   return <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1, backgroundColor: '#fffaf4' }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: compact ? 16 : 30, paddingVertical: compact ? 16 : 28 }}>
     <View style={{ width: '100%', maxWidth: 1320, alignSelf: 'center', flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: compact ? 19 : 28 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="WhyChoozeMe home" onPress={onBack} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-          <Text style={{ fontSize: compact ? 24 : 29 }}>🖐️</Text>
-          <Text style={{ fontFamily: font, color: '#372486', fontSize: compact ? 22 : 27, fontWeight: '900', letterSpacing: -1 }}>WhyChooze<Text style={{ color: color.coral }}>Me</Text></Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="WhyChoozeMe home" onPress={onBack}>
+          <Image source={Platform.OS==='web'?{uri:brandLogo as unknown as string}:brandLogo} resizeMode="contain" accessibilityLabel="WhyChoozeMe logo" style={{ width: compact ? 195 : 238, height: compact ? 41 : 49 }} />
         </Pressable>
         <Pressable accessibilityRole="button" onPress={onBack} style={{ paddingHorizontal: 15, paddingVertical: 9, borderRadius: 19, backgroundColor: '#fff', borderWidth: 1, borderColor: '#eee5ef' }}><Text style={{ fontFamily: font, color: color.purple, fontSize: 12, fontWeight: '900' }}>← Explore</Text></Pressable>
       </View>
