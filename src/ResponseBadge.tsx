@@ -1,5 +1,6 @@
-import React from 'react';
-import { Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Platform, Pressable, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { Freelancer } from './data';
 import { color } from './UI';
 
@@ -17,20 +18,35 @@ export function responseDuration(minutes: number) {
   return `${Math.round(minutes / 1440)}d`;
 }
 
+export function responseBolts(minutes: number) {
+  if (minutes <= 15) return { count: 5, ink: '#12845d', background: '#effbf5', label: 'Very fast' };
+  if (minutes <= 30) return { count: 4, ink: '#24764f', background: '#f1f9f2', label: 'Fast' };
+  if (minutes <= 60) return { count: 3, ink: '#b47a12', background: '#fff9e9', label: 'Moderate' };
+  if (minutes <= 180) return { count: 2, ink: '#cf594b', background: '#fff3f1', label: 'Slower' };
+  return { count: 1, ink: '#cf594b', background: '#fff3f1', label: 'Slower' };
+}
+
+function Bolt({ color: fill, size }: { color: string; size: number }) {
+  return <Svg width={size} height={size} viewBox="0 0 14 18"><Path d="M8.2 1 2.7 9.1h4L5.9 17l5.5-8.4H7.5L8.2 1Z" fill={fill} /></Svg>;
+}
+
 export default function ResponseBadge({ person, compact = false, side = false, toolbar = false }: { person: Freelancer; compact?: boolean; side?: boolean; toolbar?: boolean }) {
+  const [open, setOpen] = useState(false);
   const tier = responseTier(person.responseMinutes);
   if (!tier) return null;
-  const duration = responseDuration(person.responseMinutes!);
-  if (toolbar) return <View accessibilityLabel={`Response rate: ${tier.label.toLowerCase()}. Typical inquiry response ${duration}.`} style={{ alignSelf: 'flex-start', minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 13, borderWidth: 1, borderColor: '#e8e5ed', backgroundColor: '#fff', paddingHorizontal: 9, paddingVertical: 5 }}>
-    <View style={{ width: 27, height: 27, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: tier.background }}><Text style={{ color: tier.ink, fontSize: 14, fontWeight: '900' }}>{tier.icon}</Text></View>
-    <View><Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 9, lineHeight: 11, fontWeight: '800' }}>Response rate</Text><Text style={{ color: tier.ink, fontFamily: 'Nunito', fontSize: 11, lineHeight: 15, fontWeight: '900' }}>{tier.label} · ~{duration}</Text></View>
-  </View>;
-  const icon = <View style={{ width: side || compact ? 23 : 30, height: side || compact ? 23 : 30, borderRadius: 9, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: tier.ink, fontSize: side || compact ? 12 : 15, fontWeight: '900' }}>{tier.icon}</Text></View>;
-  const detail = <View style={{ minWidth: 0, alignItems: side ? 'flex-end' : 'flex-start' }}>
-    <Text style={{ color: tier.ink, fontFamily: 'Nunito', fontSize: side || compact ? 8 : 10, lineHeight: side || compact ? 11 : 13, fontWeight: '900', letterSpacing: .65 }} numberOfLines={1}>RESPONSE RATE</Text>
-    <Text style={{ color: tier.ink, fontFamily: 'Nunito', fontSize: side || compact ? 10 : 12, lineHeight: side || compact ? 14 : 16, fontWeight: '900' }} numberOfLines={1}>{tier.label} · ~{duration}</Text>
-  </View>;
-  return <View accessibilityLabel={`Response rate: ${tier.label.toLowerCase()}. Typical inquiry response ${duration}.`} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: side || compact ? 5 : 7, minWidth: 0, maxWidth: '100%', borderRadius: side ? 12 : 14, borderWidth: 1, borderColor: tier.border, backgroundColor: tier.background, paddingLeft: side ? 8 : 5, paddingRight: side ? 5 : 10, paddingVertical: side || compact ? 4 : 6, shadowColor: tier.ink, shadowOpacity: side || compact ? 0 : .08, shadowRadius: 6, elevation: side || compact ? 0 : 1 }}>
-    {side ? detail : icon}{side ? icon : detail}
-  </View>;
+  const minutes = person.responseMinutes!;
+  const meter = responseBolts(minutes);
+  const duration = minutes < 60 ? `${Math.max(1, Math.round(minutes))} minutes` : minutes < 1440 ? `${Math.round(minutes / 60)} hours` : `${Math.round(minutes / 1440)} days`;
+  const description = `Usually replies in about ${duration}`;
+  const small = side || compact;
+  return <Pressable {...(Platform.OS === 'web' ? { className: 'wcm-response-meter' } as any : {})} accessibilityRole="button" accessibilityLabel={`Response rate: ${meter.count} out of 5. ${description}.`} onPress={event => { event.stopPropagation?.(); if (Platform.OS !== 'web') setOpen(value => !value); }} style={{ alignSelf: 'flex-start', minHeight: toolbar ? 40 : 32, minWidth: 0, maxWidth: '100%', justifyContent: 'center', borderRadius: 13, borderWidth: 1, borderColor: open ? meter.ink : '#e8e5ed', backgroundColor: open ? meter.background : '#fff', paddingHorizontal: toolbar ? 12 : 8, paddingVertical: 4, zIndex: open ? 20 : 0, ...(Platform.OS === 'web' ? { '--response-ink': meter.ink, '--response-background': meter.background, transition: 'background-color 160ms ease, border-color 160ms ease', cursor: 'help' } as any : {}) }}>
+    <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: small ? 8 : 9, lineHeight: 11, fontWeight: '900', letterSpacing: .3 }}>RESPONSE RATE</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: small ? 1 : 2, marginTop: 2 }}>
+      {Array.from({ length: 5 }, (_, index) => <Bolt key={index} color={index < meter.count ? meter.ink : '#dcdfe6'} size={small ? 11 : 13} />)}
+    </View>
+    {(Platform.OS === 'web' || open) && <View {...(Platform.OS === 'web' ? { className: 'wcm-response-tooltip' } as any : {})} pointerEvents="none" style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: 7, width: 168, borderRadius: 11, paddingHorizontal: 11, paddingVertical: 8, backgroundColor: '#20213f', shadowColor: '#16162f', shadowOpacity: .2, shadowRadius: 9, elevation: 7 }}>
+      <Text style={{ color: '#fff', fontFamily: 'Nunito', fontSize: 11, fontWeight: '900' }}>{meter.label} response</Text>
+      <Text style={{ color: '#e5e3f4', fontFamily: 'Nunito', fontSize: 10, marginTop: 2 }}>{description}</Text>
+    </View>}
+  </Pressable>;
 }
