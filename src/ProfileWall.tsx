@@ -32,7 +32,10 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
       </View>
       <View style={{ flex: 1, gap: 12 }}>
         <View>
-          <Heading size={narrow ? 29 : 37}>{profile.name}{profile.premium && <Text style={{ color: '#a26800', fontSize: 14 }}>  ★ Premium</Text>}</Heading>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+            <Heading size={narrow ? 29 : 37} style={{ flexShrink: 1 }}>{profile.name}{profile.premium && <Text style={{ color: '#a26800', fontSize: 14 }}>  ★ Premium</Text>}</Heading>
+            <View style={{ marginLeft: 'auto', marginTop: narrow ? 5 : 8 }}><PresenceStatus person={profile} /></View>
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
             <View accessibilityLabel={`Skill: ${profile.role}`} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, backgroundColor: '#fff1d9', borderWidth: 1, borderColor: '#f4d49b', borderRadius: 16, paddingHorizontal: 11, paddingVertical: 5 }}>
               <Text style={{ color: '#bc7416', fontSize: 12 }}>✦</Text>
@@ -40,7 +43,6 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
             </View>
             <Text style={[text, { color: color.muted, fontSize: 14 }]}>⌖ {profile.place}, Goa</Text>
           </View>
-          <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 9 }}><PresenceStatus person={profile} /><ResponseBadge person={profile} /></View>
         </View>
         <View style={{ backgroundColor: '#f7f0ff', borderLeftWidth: 4, borderLeftColor: color.purple, borderRadius: 16, paddingHorizontal: narrow ? 15 : 19, paddingVertical: 13 }}>
           <Text style={[text, { fontSize: narrow ? 15 : 17, lineHeight: narrow ? 23 : 26, fontWeight: '700' }]}>“{profile.why}”</Text>
@@ -54,7 +56,10 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', flex: 1 }}>
         <View style={{ backgroundColor: '#fff1d7', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 9 }}><Text style={[text, { fontWeight: '900', color: '#975e00', fontSize: 16 }]}>{reviewCount ? `★ ${rating.toFixed(1)}` : '★ New'} <Text style={{ fontSize: 11, color: color.muted }}>· {reviewCount} reviews</Text></Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel={`I am located at ${profile.place}, show on map`} onPress={onMap} style={{ borderRadius: 13, backgroundColor: '#f3edff', paddingHorizontal: 12, paddingVertical: 10 }}><Text style={[text, { color: color.purple, fontWeight: '900', fontSize: 12 }]}>⌖ I am located at {profile.place} →</Text></Pressable>
-        <Button outline icon={<CalendarIcon color={color.purple} size={16} />} onPress={onAvailability} style={{ minHeight: 40 }} textStyle={{ fontSize: 12 }}>See availability</Button>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          <Button outline icon={<CalendarIcon color={color.purple} size={16} />} onPress={onAvailability} style={{ minHeight: 40 }} textStyle={{ fontSize: 12 }}>See availability</Button>
+          <ResponseBadge person={profile} toolbar />
+        </View>
       </View>
       <View style={{ flexDirection: 'row', gap: 9 }}>
         {chatReady ? <Button onPress={onChat} style={{ minHeight: 42 }}>Open chat</Button> : <InquiryActionButton name={profile.name} onPress={onChat} />}

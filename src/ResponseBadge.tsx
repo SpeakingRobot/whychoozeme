@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { Freelancer } from './data';
+import { color } from './UI';
 
 export function responseTier(minutes?: number) {
   if (minutes === undefined || !Number.isFinite(minutes) || minutes < 0) return null;
@@ -16,10 +17,14 @@ export function responseDuration(minutes: number) {
   return `${Math.round(minutes / 1440)}d`;
 }
 
-export default function ResponseBadge({ person, compact = false, side = false }: { person: Freelancer; compact?: boolean; side?: boolean }) {
+export default function ResponseBadge({ person, compact = false, side = false, toolbar = false }: { person: Freelancer; compact?: boolean; side?: boolean; toolbar?: boolean }) {
   const tier = responseTier(person.responseMinutes);
   if (!tier) return null;
   const duration = responseDuration(person.responseMinutes!);
+  if (toolbar) return <View accessibilityLabel={`Response rate: ${tier.label.toLowerCase()}. Typical inquiry response ${duration}.`} style={{ alignSelf: 'flex-start', minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 13, borderWidth: 1, borderColor: '#e8e5ed', backgroundColor: '#fff', paddingHorizontal: 9, paddingVertical: 5 }}>
+    <View style={{ width: 27, height: 27, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: tier.background }}><Text style={{ color: tier.ink, fontSize: 14, fontWeight: '900' }}>{tier.icon}</Text></View>
+    <View><Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 9, lineHeight: 11, fontWeight: '800' }}>Response rate</Text><Text style={{ color: tier.ink, fontFamily: 'Nunito', fontSize: 11, lineHeight: 15, fontWeight: '900' }}>{tier.label} · ~{duration}</Text></View>
+  </View>;
   const icon = <View style={{ width: side || compact ? 23 : 30, height: side || compact ? 23 : 30, borderRadius: 9, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: tier.ink, fontSize: side || compact ? 12 : 15, fontWeight: '900' }}>{tier.icon}</Text></View>;
   const detail = <View style={{ minWidth: 0, alignItems: side ? 'flex-end' : 'flex-start' }}>
     <Text style={{ color: tier.ink, fontFamily: 'Nunito', fontSize: side || compact ? 8 : 10, lineHeight: side || compact ? 11 : 13, fontWeight: '900', letterSpacing: .65 }} numberOfLines={1}>RESPONSE RATE</Text>
