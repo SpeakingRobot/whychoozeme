@@ -4,7 +4,7 @@ import { Freelancer } from './data';
 import { Button, color, Heading, Portrait } from './UI';
 import { CalendarIcon } from './icons';
 import InquiryActionButton from './InquiryActionButton';
-import PresenceStatus from './PresenceStatus';
+import PresenceStatus, { presenceLabel } from './PresenceStatus';
 import ResponseBadge from './ResponseBadge';
 import { SoftwareMark } from './SoftwarePicker';
 
@@ -31,6 +31,10 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
   const text = { fontFamily: 'Nunito' as const, color: color.ink };
   const [availabilityHovered, setAvailabilityHovered] = useState(false);
   const [showAllSoftware, setShowAllSoftware] = useState(false);
+  const roleBadge = <View accessibilityLabel={`Skill: ${profile.role}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff1d9', borderWidth: 1, borderColor: '#f4d49b', borderRadius: 16, paddingHorizontal: 11, paddingVertical: 5 }}>
+    <Text style={{ color: '#bc7416', fontSize: 12 }}>✦</Text>
+    <Text style={[text, { color: '#865018', fontSize: 14, fontWeight: '900' }]}>{profile.role}</Text>
+  </View>;
 
   return <View style={{ padding: narrow ? 18 : 28 }}>
     <View style={{ flexDirection: isPhone ? 'column' : 'row', alignItems: isPhone ? 'center' : 'flex-start', gap: isPhone ? 0 : isTablet ? 22 : 32 }}>
@@ -38,21 +42,15 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
         <View style={{ width: portraitSize, height: portraitSize, padding: 5, borderWidth: 2, borderColor: '#e8d6ff', borderRadius: 27, backgroundColor: '#fbf5ff', shadowColor: color.purple, shadowOpacity: .12, shadowRadius: 15, elevation: 3 }}>
           <Portrait index={profile.image} imageUrl={profile.imageUrl} name={profile.name} height={portraitSize - 14} radius={20} />
         </View>
+        {!!presenceLabel(profile.lastActiveAt) && <View style={{ marginTop: 11 }}><PresenceStatus person={profile} /></View>}
       </View>
       <View style={{ flex: isPhone ? undefined : 1, width: isPhone ? '100%' : undefined, gap: isPhone ? 13 : 12 }}>
         <View style={{ alignItems: isPhone ? 'center' : 'flex-start', gap: 7, marginBottom: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: isPhone ? 'center' : 'space-between', flexWrap: 'wrap', gap: 10, width: '100%' }}>
             <Heading size={isPhone ? 29 : isTablet ? 33 : 38} style={{ textAlign: isPhone ? 'center' : 'left', flexShrink: 1 }}>{profile.name}{profile.premium && <Text style={{ color: '#a26800', fontSize: 14 }}>  ★ Premium</Text>}</Heading>
-            {!isPhone && <PresenceStatus person={profile} />}
+            {!isPhone && roleBadge}
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: isPhone ? 'center' : 'flex-start', flexWrap: 'wrap', gap: 8, width: '100%' }}>
-            <View accessibilityLabel={`Skill: ${profile.role}`} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, backgroundColor: '#fff1d9', borderWidth: 1, borderColor: '#f4d49b', borderRadius: 16, paddingHorizontal: 11, paddingVertical: 5 }}>
-              <Text style={{ color: '#bc7416', fontSize: 12 }}>✦</Text>
-              <Text style={[text, { color: '#865018', fontSize: 14, fontWeight: '900' }]}>{profile.role}</Text>
-            </View>
-            <Text style={[text, { color: color.muted, fontSize: 14 }]}>⌖ {profile.place}, Goa</Text>
-          </View>
-          {isPhone && <View style={{ marginTop: 2 }}><PresenceStatus person={profile} /></View>}
+          {isPhone && roleBadge}
         </View>
         <View style={{ backgroundColor: '#f7f0ff', borderLeftWidth: 4, borderLeftColor: color.purple, borderRadius: 16, paddingHorizontal: isPhone ? 15 : 19, paddingVertical: isPhone ? 14 : 15 }}>
           <Text style={[text, { fontSize: isPhone ? 15 : 17, lineHeight: isPhone ? 23 : 26, fontWeight: '700' }]} numberOfLines={isPhone ? 3 : 4}>“{profile.why}”</Text>
