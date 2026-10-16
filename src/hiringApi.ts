@@ -114,6 +114,10 @@ export async function profileSignature(userId: string) {
   if (!row) return null;
   return { path: row.storage_path, legalName:row.legal_name, url: await getPrivatePdf(row.storage_path) };
 }
+export async function hasProfileSignature(userId: string): Promise<boolean> {
+  const row = value(await client().from('signature_assets').select('storage_path').eq('user_id', userId).maybeSingle()) as { storage_path: string } | null;
+  return !!row?.storage_path;
+}
 export async function saveProfileSignature(userId: string, legalName: string, bytes: Blob) {
   if (legalName.trim().length<2) throw new Error('Enter your full legal name.');
   const path = `${userId}/signatures/${Date.now()}.png`;
