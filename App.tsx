@@ -418,7 +418,13 @@ export default function App() {
       if (authMode === 'recovery') { await live.updatePassword(password); leaveAuth(); setNotice('Password updated.'); }
       else if (authMode === 'reset') { await live.sendPasswordReset(finderEmail.trim()); switchAuthMode('signIn'); setAuthMessage('If this email has an account, a reset link is on its way.'); }
       else if (authMode === 'signIn') { const result = await live.signIn(finderEmail.trim(), password); setUserId(result.user.id); leaveAuth(); const role = result.user.user_metadata?.account_type; setNotice(role === 'freelancer' ? 'Welcome back, Freelancer! Your work profile is ready.' : role === 'finder' ? 'Welcome back, Finder! Discover local talent.' : 'Welcome back!'); }
-      else if (accountKind) { const active = await live.signUpAccount(finderEmail.trim(), password, finderName.trim(), finderTaluka, accountKind); const role = accountKind === 'freelancer' ? 'Freelancer' : 'Finder'; if (active) { const auth = await live.account(); setUserId(auth.user?.id || null); leaveAuth(); setNotice(`Welcome, ${role}! Your account is ready.`); } else { switchAuthMode('signIn'); setAuthMessage(`Your ${role} account has been created. Check your email to confirm it, then sign in.`); } }
+      else if (accountKind) {
+        const outcome = await live.signUpAccount(finderEmail.trim(), password, finderName.trim(), finderTaluka, accountKind);
+        const role = accountKind === 'freelancer' ? 'Freelancer' : 'Finder';
+        if (outcome === 'existing') { setFormError('This email already has an account. Sign in instead, or reset your password.'); }
+        else if (outcome === 'active') { const auth = await live.account(); setUserId(auth.user?.id || null); leaveAuth(); setNotice(`Welcome, ${role}! Your account is ready.`); }
+        else { switchAuthMode('signIn'); setAuthMessage(`Check your email to confirm your ${role} account, then sign in.`); }
+      }
     } catch (error) { setFormError((error as Error).message); }
     finally { setAuthBusy(false); }
   };
