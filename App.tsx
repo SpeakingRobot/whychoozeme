@@ -195,7 +195,8 @@ export default function App() {
   const [authMode, setAuthMode] = useState<AuthMode>(() => Platform.OS === 'web' ? authModeFromUrl(globalThis.location.pathname, globalThis.location.search) : 'signIn');
   const [authBusy, setAuthBusy] = useState(false);
   const [authMessage, setAuthMessage] = useState('');
-  const [password, setPassword] = useState('');
+  const [emailCode, setEmailCode] = useState('');
+  const [codeSentTo, setCodeSentTo] = useState('');
   const [applications, setApplications] = useState<Record<string, any[]>>({});
   const [connectingApplication, setConnectingApplication] = useState<string | null>(null);
   const [applyDraft, setApplyDraft] = useState<Record<string, string>>({});
@@ -270,7 +271,7 @@ export default function App() {
   }, [setFinder, setOwnProfile, setRequests]);
   const refreshInquiries = useCallback(async () => { if (!userId) return; try { setInquiries(await listInquiries()); } catch (error) { setNotice((error as Error).message); } }, [userId]);
   const loadChat = useCallback(async (person: Freelancer) => { if (!userId || !chatRoute) return; try { const rows = await live.getMessages(chatRoute.finderId, chatRoute.freelancerId); setMessages(rows.map((row: any) => ({ id: row.id, freelancerId: person.id, body: row.body, from: row.sender_id === chatRoute.finderId ? 'finder' : 'freelancer', time: new Date(row.created_at).getTime() }))); } catch (error) { setNotice((error as Error).message); } }, [userId, chatRoute]);
-  useEffect(() => { let active = true; live.account().then(({ user }) => { if (active) setUserId(user?.id || null); }).catch(error => setNotice(error.message)).finally(() => { if (active) setAuthReady(true); }); refreshPeople(); live.getCategories().then(setCatalog).catch(error => setNotice(error.message)); const subscription = live.db?.auth.onAuthStateChange((event, session) => { setUserId(session?.user?.id || null); if (event === 'PASSWORD_RECOVERY') { setAuthMode('recovery'); setPage('auth'); if (Platform.OS === 'web') globalThis.history.replaceState({}, '', authUrl('recovery')); } }); return () => { active = false; subscription?.data.subscription.unsubscribe(); }; }, [refreshPeople]);
+  useEffect(() => { let active = true; live.account().then(({ user }) => { if (active) setUserId(user?.email_confirmed_at ? user.id : null); }).catch(error => setNotice(error.message)).finally(() => { if (active) setAuthReady(true); }); refreshPeople(); live.getCategories().then(setCatalog).catch(error => setNotice(error.message)); const subscription = live.db?.auth.onAuthStateChange((_event, session) => { setUserId(session?.user?.email_confirmed_at ? session.user.id : null); }); return () => { active = false; subscription?.data.subscription.unsubscribe(); }; }, [refreshPeople]);
   useEffect(() => { if (!userId) { setFinder(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setInquiries([]); setRequests([]); setRemoteNotices([]); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } refreshAccount(userId); refreshInquiries(); }, [userId, refreshAccount, refreshInquiries]);
   useEffect(() => {
     if (!userId || !accountLoaded || setupLoadError || setupPrompted.current.has(userId)) return;
@@ -346,16 +347,16 @@ export default function App() {
   const openAuth = (mode: AuthMode, limit = false) => {
     if (page !== 'auth') authReturnPage.current = page;
     setAccountKind(null);
-    setGuestLimitPrompt(limit); setFormError(''); setAuthMessage(''); setPassword(''); setAuthMode(mode); setDialog(null); setMenu(null); setPage('auth');
+    setGuestLimitPrompt(limit); setFormError(''); setAuthMessage(''); setEmailCode(''); setCodeSentTo(''); setAuthMode(mode); setDialog(null); setMenu(null); setPage('auth');
     if (Platform.OS === 'web') globalThis.history.pushState({}, '', authUrl(mode));
   };
   const switchAuthMode = (mode: AuthMode) => {
-    setAuthMode(mode); setFormError(''); setAuthMessage(''); setPassword('');
+    setAuthMode(mode); setFormError(''); setAuthMessage(''); setEmailCode(''); setCodeSentTo('');
     if (Platform.OS === 'web') globalThis.history.replaceState({}, '', authUrl(mode));
   };
   const leaveAuth = () => {
     setPage(authReturnPage.current === 'auth' ? 'home' : authReturnPage.current);
-    setGuestLimitPrompt(false); setFormError(''); setAuthMessage(''); setPassword('');
+    setGuestLimitPrompt(false); setFormError(''); setAuthMessage(''); setEmailCode(''); setCodeSentTo('');
     if (Platform.OS === 'web' && globalThis.location.pathname === '/auth') globalThis.history.replaceState({}, '', '/');
   };
   const openCollection = (title: string, selectedCategory: string) => { setCollection({ title, category: selectedCategory }); setCategory(selectedCategory); setSearch(''); setSearchDraft(''); setPage('collection'); setMenu(null); };
@@ -408,23 +409,32 @@ export default function App() {
   const registerFinder = async () => {
     if (authBusy) return;
     setFormError(''); setAuthMessage('');
-    if (authMode === 'recovery' ? password.length < 8 : !/^\S+@\S+\.\S+$/.test(finderEmail.trim())) { setFormError(authMode === 'recovery' ? 'Use at least 8 characters for your new password.' : 'Enter a valid email address.'); return; }
-    if (authMode === 'join' && finderName.trim().length < 2) { setFormError('Enter your name to create an account.'); return; }
-    if (authMode === 'join' && !accountKind) { setFormError('Choose Finder or Freelancer to create an account.'); return; }
-    if (authMode === 'join' && password.length < 8) { setFormError('Use at least 8 characters for your password.'); return; }
-    if (authMode === 'signIn' && !password) { setFormError('Enter your password.'); return; }
+    if (!codeSentTo && !/^\S+@\S+\.\S+$/.test(finderEmail.trim())) { setFormError('Enter a valid email address.'); return; }
+    if (!codeSentTo && authMode === 'join' && finderName.trim().length < 2) { setFormError('Enter your name to create an account.'); return; }
+    if (!codeSentTo && authMode === 'join' && !accountKind) { setFormError('Choose Finder or Freelancer to create an account.'); return; }
+    if (codeSentTo && !/^\d{8}$/.test(emailCode.trim())) { setFormError('Enter the 8-digit code from your email.'); return; }
     setAuthBusy(true);
     try {
-      if (authMode === 'recovery') { await live.updatePassword(password); leaveAuth(); setNotice('Password updated.'); }
-      else if (authMode === 'reset') { await live.sendPasswordReset(finderEmail.trim()); switchAuthMode('signIn'); setAuthMessage('If this email has an account, a reset link is on its way.'); }
-      else if (authMode === 'signIn') { const result = await live.signIn(finderEmail.trim(), password); setUserId(result.user.id); leaveAuth(); const role = result.user.user_metadata?.account_type; setNotice(role === 'freelancer' ? 'Welcome back, Freelancer! Your work profile is ready.' : role === 'finder' ? 'Welcome back, Finder! Discover local talent.' : 'Welcome back!'); }
-      else if (accountKind) {
-        const outcome = await live.signUpAccount(finderEmail.trim(), password, finderName.trim(), finderTaluka, accountKind);
-        const role = accountKind === 'freelancer' ? 'Freelancer' : 'Finder';
-        if (outcome === 'existing') { setFormError('This email already has an account. Sign in instead, or reset your password.'); }
-        else if (outcome === 'active') { const auth = await live.account(); setUserId(auth.user?.id || null); leaveAuth(); setNotice(`Welcome, ${role}! Your account is ready.`); }
-        else { switchAuthMode('signIn'); setAuthMessage(`Check your email to confirm your ${role} account, then sign in.`); }
+      if (codeSentTo) {
+        const user = await live.verifyEmailCode(codeSentTo, emailCode.trim());
+        setUserId(user.id); leaveAuth();
+        const role = user.user_metadata?.account_type;
+        setNotice(role === 'freelancer' ? 'Welcome, Freelancer! Your email is verified.' : role === 'finder' ? 'Welcome, Finder! Your email is verified.' : 'Your email is verified. Welcome!');
+      } else {
+        const email = finderEmail.trim().toLowerCase();
+        await live.sendEmailCode(email, authMode === 'join' && accountKind ? { name: finderName.trim(), taluka: finderTaluka, accountKind } : undefined);
+        setCodeSentTo(email); setEmailCode('');
+        setAuthMessage('Check your inbox for the verification code. Access begins after you enter it.');
       }
+    } catch (error) { setFormError((error as Error).message); }
+    finally { setAuthBusy(false); }
+  };
+  const resendEmailCode = async () => {
+    if (!codeSentTo || authBusy) return;
+    setAuthBusy(true); setFormError(''); setAuthMessage('');
+    try {
+      await live.sendEmailCode(codeSentTo, authMode === 'join' && accountKind ? { name: finderName.trim(), taluka: finderTaluka, accountKind } : undefined);
+      setAuthMessage('A fresh code is on its way.');
     } catch (error) { setFormError((error as Error).message); }
     finally { setAuthBusy(false); }
   };
@@ -576,7 +586,7 @@ export default function App() {
   const secondaryMenuKeys = desktopMenuKeys.slice(primaryMenuCount);
   const desktopNavigation = { categories: catalog, onCategory: openHighlightedCategory };
 
-  if (page === 'auth') return <View style={{ flex: 1, height: Platform.OS === 'web' ? '100vh' as any : undefined, paddingTop: Platform.OS === 'ios' ? 26 : 0 }}><StatusBar barStyle="dark-content" backgroundColor="#fffaf4" /><AuthPage mode={authMode} compact={compact} signedIn={authReady && !!userId && authMode !== 'recovery'} name={finderName} email={finderEmail} password={password} taluka={finderTaluka} accountKind={accountKind} busy={authBusy} error={formError} message={authMessage} guestLimit={guestLimitPrompt} onName={setFinderName} onEmail={setFinderEmail} onPassword={setPassword} onTaluka={setFinderTaluka} onAccountKind={setAccountKind} onMode={switchAuthMode} onSubmit={registerFinder} onBack={leaveAuth} /></View>;
+  if (page === 'auth') return <View style={{ flex: 1, height: Platform.OS === 'web' ? '100vh' as any : undefined, paddingTop: Platform.OS === 'ios' ? 26 : 0 }}><StatusBar barStyle="dark-content" backgroundColor="#fffaf4" /><AuthPage mode={authMode} compact={compact} signedIn={authReady && !!userId} name={finderName} email={finderEmail} code={emailCode} codeSentTo={codeSentTo} taluka={finderTaluka} accountKind={accountKind} busy={authBusy} error={formError} message={authMessage} guestLimit={guestLimitPrompt} onName={setFinderName} onEmail={setFinderEmail} onCode={setEmailCode} onTaluka={setFinderTaluka} onAccountKind={setAccountKind} onMode={switchAuthMode} onSubmit={registerFinder} onResend={resendEmailCode} onChangeEmail={() => { setCodeSentTo(''); setEmailCode(''); setAuthMessage(''); setFormError(''); }} onBack={leaveAuth} /></View>;
 
   return <View style={{ flex: 1, height: Platform.OS === 'web' ? '100vh' as any : undefined, overflow: 'hidden', backgroundColor: '#fffaf3', paddingTop: Platform.OS === 'ios' ? 26 : 0 }}><StatusBar barStyle="dark-content" backgroundColor="#fff" /><ScrollView ref={scrollRef} style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ minHeight: '100%' }}>
     {/* HEADER */}

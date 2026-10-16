@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { account, db, isAdmin, signIn, signOut } from './liveApi';
+import { account, db, isAdmin, sendEmailCode, signOut, verifyEmailCode } from './liveApi';
 import { ADMIN_PATH } from './adminRoute';
 
 type Profile = Record<string, any>;
@@ -68,7 +68,8 @@ function isBanned(user: AdminUser) {
 export default function AdminConsole() {
   const [authState, setAuthState] = useState<'loading' | 'signed-out' | 'forbidden' | 'admin'>('loading');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSentTo, setCodeSentTo] = useState('');
   const [viewerEmail, setViewerEmail] = useState('');
   const [list, setList] = useState<UserList>({ users: [], page: 1, hasMore: false });
   const [tab, setTab] = useState<Tab>('all');
@@ -97,7 +98,7 @@ export default function AdminConsole() {
       try {
         const { user } = await account();
         if (!active) return;
-        if (!user) { setAuthState('signed-out'); return; }
+        if (!user?.email_confirmed_at) { setAuthState('signed-out'); return; }
         setViewerEmail(user.email || '');
         const allowed = await isAdmin(user.id);
         if (!active) return;
@@ -160,12 +161,18 @@ export default function AdminConsole() {
     event.preventDefault();
     setBusy(true); setError('');
     try {
-      const result = await signIn(email.trim(), password);
-      setPassword('');
-      setViewerEmail(result.user.email || '');
-      const allowed = await isAdmin(result.user.id);
-      setAuthState(allowed ? 'admin' : 'forbidden');
-      if (allowed) await load(1);
+      if (!codeSentTo) {
+        await sendEmailCode(email.trim().toLowerCase());
+        setCodeSentTo(email.trim().toLowerCase());
+        setNotice('Enter the 8-digit code sent to your email.');
+      } else {
+        const user = await verifyEmailCode(codeSentTo, code.trim());
+        setCode(''); setCodeSentTo('');
+        setViewerEmail(user.email || '');
+        const allowed = await isAdmin(user.id);
+        setAuthState(allowed ? 'admin' : 'forbidden');
+        if (allowed) await load(1);
+      }
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   };
@@ -182,11 +189,13 @@ export default function AdminConsole() {
     <main style={{ maxWidth: 1360, margin: '0 auto', padding: '30px 24px 70px' }}>
       {authState === 'loading' && <p>Checking access…</p>}
       {authState === 'signed-out' && <section style={{ ...cardStyle, maxWidth: 450, margin: '60px auto' }}>
-        <h1 style={{ marginTop: 0 }}>Admin sign in</h1><p style={{ color: '#67637c' }}>Sign in with a confirmed Supabase account that has a row in <code>public.admins</code>.</p>
+        <h1 style={{ marginTop: 0 }}>Admin sign in</h1><p style={{ color: '#67637c' }}>Verify the email of a confirmed Supabase account that has a row in <code>public.admins</code>.</p>
         <form onSubmit={doSignIn} style={{ display: 'grid', gap: 14 }}>
-          <label>Email<input type="email" required autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} style={inputStyle} /></label>
-          <label>Password<input type="password" required autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} style={inputStyle} /></label>
-          <button disabled={busy} style={buttonStyle()}>{busy ? 'Signing in…' : 'Sign in'}</button>
+          {!codeSentTo ? <label>Email<input type="email" required autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} style={inputStyle} /></label> : <label>Verification code sent to {codeSentTo}<input inputMode="numeric" pattern="[0-9]{8}" maxLength={8} required autoComplete="one-time-code" value={code} onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 8))} style={inputStyle} /></label>}
+          <button disabled={busy} style={buttonStyle()}>{busy ? 'Please wait…' : codeSentTo ? 'Verify code' : 'Send code'}</button>
+          {!!codeSentTo && <button type="button" disabled={busy} style={buttonStyle(true)} onClick={() => { setCode(''); setCodeSentTo(''); setError(''); }}>Change email</button>}
+          {!!notice && <p role="status" style={{ color: '#28654b', margin: 0 }}>{notice}</p>}
+          {!!error && <p role="alert" style={{ color: '#bb394c', margin: 0 }}>{error}</p>}
         </form>
       </section>}
       {authState === 'forbidden' && <section style={{ ...cardStyle, maxWidth: 600, margin: '60px auto' }}><h1>Access unavailable</h1><p>This account is signed in but has no admin role. Add its confirmed Auth user ID to <code>public.admins</code> in Supabase, then reload this page.</p></section>}

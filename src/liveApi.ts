@@ -6,7 +6,7 @@ import { Category, Freelancer, RequestPost, talukaCenters, Taluka } from './data
 import { liveEnabled, supabasePublishableKey, supabaseUrl } from './supabaseConfig';
 import { normalizeLinks, normalizeSoftware, PortfolioLink, SoftwareSkill } from './software';
 import { DESCRIPTION_LIMIT } from './descriptionFormatting';
-import { isExistingSignupError, signupOutcome } from './signupOutcome';
+import { confirmEmailOtp, requestEmailOtp } from './emailOtp';
 
 export const db: SupabaseClient | null = liveEnabled ? createClient(supabaseUrl, supabasePublishableKey, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: Platform.OS === 'web', ...(Platform.OS === 'web' ? {} : { storage: AsyncStorage }) },
@@ -18,26 +18,11 @@ function unwrap<T>(result: { data?: T; error: { message: string } | null }): T {
 export async function account() { const result = await assertDb().auth.getUser(); if (result.error?.name === 'AuthSessionMissingError') return { user: null }; if (result.error) throw new Error(result.error.message); return result.data; }
 export type AccountKind = 'finder' | 'freelancer';
 
-export async function signUpAccount(email: string, password: string, name: string, taluka: Taluka, accountKind: AccountKind) {
-  const client = assertDb();
-  const { data, error } = await client.auth.signUp({ email, password, options: { data: { display_name: name, taluka, account_type: accountKind },
-    ...(Platform.OS === 'web' ? { emailRedirectTo: globalThis.location.origin } : {}) } });
-  if (error) {
-    if (isExistingSignupError(error)) return 'existing';
-    throw new Error(error.message);
-  }
-  const outcome = signupOutcome(data);
-  if (outcome === 'active' && accountKind === 'finder' && data.user) await saveFinder(data.user.id, name, taluka);
-  return outcome;
+export async function sendEmailCode(email: string, signup?: { name: string; taluka: Taluka; accountKind: AccountKind }) {
+  await requestEmailOtp(assertDb().auth, email, signup);
 }
-export async function signIn(email: string, password: string) { const result = await assertDb().auth.signInWithPassword({ email, password }); if (result.error) throw new Error(result.error.message); return result.data; }
-export async function sendPasswordReset(email: string) {
-  const result = await assertDb().auth.resetPasswordForEmail(email, Platform.OS === 'web' ? { redirectTo: globalThis.location.origin } : {});
-  if (result.error) throw new Error(result.error.message);
-}
-export async function updatePassword(password: string) {
-  const result = await assertDb().auth.updateUser({ password });
-  if (result.error) throw new Error(result.error.message);
+export async function verifyEmailCode(email: string, token: string) {
+  return confirmEmailOtp(assertDb().auth, email, token);
 }
 export async function signOut() { unwrap(await assertDb().auth.signOut()); }
 export async function saveFinder(userId: string, name: string, taluka: Taluka) {
