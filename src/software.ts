@@ -4,6 +4,21 @@ export type SoftwareSkill = { name: string; slug?: string; website?: string };
 export type PortfolioLink = { title: string; url: string };
 export const softwareCatalog = rawCatalog as SoftwareSkill[];
 
+// Use Adobe's product artwork instead of the shared adobe.com favicon. Resolve by
+// name so profiles saved before this mapping also receive the correct icon.
+const adobeProductIcons: Record<string, string> = {
+  'adobe photoshop': 'photoshop',
+  'adobe illustrator': 'illustrator',
+  'adobe indesign': 'indesign',
+  'adobe lightroom': 'lightroom',
+  'adobe premiere pro': 'premiere-pro',
+  'adobe after effects': 'after-effects',
+  'adobe audition': 'audition',
+  'adobe animate': 'animate',
+  'adobe xd': 'xd',
+  'adobe acrobat': 'acrobat-pro-40',
+};
+
 export function publicHttpsUrl(input: string): string | null {
   try {
     const url = new URL(input.trim());
@@ -17,6 +32,8 @@ export function publicHttpsUrl(input: string): string | null {
 }
 
 export function softwareIcon(skill: SoftwareSkill): string | null {
+  const adobeIcon = adobeProductIcons[skill.name.trim().toLowerCase()];
+  if (adobeIcon) return `https://www.adobe.com/cc-shared/assets/img/product-icons/svg/${adobeIcon}.svg`;
   if (skill.slug && /^[a-z0-9_]+$/.test(skill.slug))
     return `https://cdn.jsdelivr.net/npm/simple-icons@16.35.0/icons/${skill.slug}.svg`;
   const website = skill.website && publicHttpsUrl(skill.website);

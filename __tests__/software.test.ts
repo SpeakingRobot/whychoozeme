@@ -21,3 +21,15 @@ test('custom software keeps its public site for a favicon', () => {
   const [skill] = normalizeSoftware([{ name: 'A new editor', website: 'https://editor.example.com' }]);
   expect(softwareIcon(skill)).toContain('editor.example.com');
 });
+
+test('Adobe apps use their own product icons, including previously saved entries', () => {
+  for (const [name, file] of [
+    ['Adobe Photoshop', 'photoshop.svg'],
+    ['Adobe Illustrator', 'illustrator.svg'],
+    ['Adobe InDesign', 'indesign.svg'],
+    ['Adobe Lightroom', 'lightroom.svg'],
+    ['Adobe Premiere Pro', 'premiere-pro.svg'],
+  ]) {
+    expect(softwareIcon({ name, website: 'https://www.adobe.com' })?.endsWith(`/${file}`)).toBe(true);
+  }
+});
