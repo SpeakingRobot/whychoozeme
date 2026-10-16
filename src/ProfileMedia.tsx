@@ -29,6 +29,7 @@ type WorkTab = 'Description' | 'Photos' | 'Video' | 'Documents' | 'Links';
 export default function ProfileMedia({ profile, narrow, canEdit, photos, video, documents, onAddPhotos, onAddVideo, onAddDocuments, onRemovePhoto, onRemoveVideo, onRemoveDocument, onSaveLinks }: Props) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [tab, setTab] = useState<WorkTab>('Description');
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [linkTitle, setLinkTitle] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [linkError, setLinkError] = useState('');
@@ -38,6 +39,9 @@ export default function ProfileMedia({ profile, narrow, canEdit, photos, video, 
   const gallery = [...samples.map(item => ({ source: Platform.OS === 'web' ? { uri: item.source as unknown as string } : item.source, label: item.label, sample: true, index: -1 })), ...photos.map((uri, index) => ({ source: { uri }, label: `Your photo ${index + 1}`, sample: false, index }))];
   const usedBytes = documents.reduce((total, item) => total + item.size, 0);
   const links = profile.links || [];
+  const description = profile.description?.trim() || profile.why?.trim() || 'No description added yet.';
+  const longDescription = description.length > 850;
+  const visibleDescription = longDescription && !descriptionExpanded ? `${description.slice(0, 850).replace(/\s+\S*$/, '')}…` : description;
   const saveLink = async (next: PortfolioLink[]) => {
     setSavingLink(true); setLinkError('');
     try { await onSaveLinks(next); setLinkTitle(''); setLinkUrl(''); }
@@ -65,7 +69,8 @@ export default function ProfileMedia({ profile, narrow, canEdit, photos, video, 
     {tab === 'Description' && <View style={section}>
       <View style={{ maxWidth: 850, gap: 10 }}>
         <Heading size={23}>Description <Text style={{ color: color.coral }}>✦</Text></Heading>
-        <DescriptionPreview value={profile.description?.trim() || profile.why?.trim() || 'No description added yet.'} fontSize={narrow ? 15 : 16} />
+        <DescriptionPreview value={visibleDescription} fontSize={narrow ? 15 : 16} />
+        {longDescription && <Pressable accessibilityRole="button" onPress={() => setDescriptionExpanded(value => !value)} style={{ alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 13, paddingVertical: 8, backgroundColor: '#f1e9ff' }}><Text style={{ color: color.purple, fontFamily: 'Nunito', fontWeight: '900', fontSize: 12 }}>{descriptionExpanded ? 'Show less ↑' : 'Read full description ↓'}</Text></Pressable>}
       </View>
     </View>}
     {tab === 'Photos' && <View style={section}><View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 9 }}><Text style={[info, { fontWeight: '800' }]}>Photos and portfolio highlights</Text>{canEdit && <Button outline onPress={onAddPhotos} disabled={photos.length >= 20} style={{ minHeight: 37 }} textStyle={{ fontSize: 12 }}>+ Add photos</Button>}</View>

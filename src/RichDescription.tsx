@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { color } from './UI';
-import { DescriptionFormat, formatDescription, parseDescriptionLine } from './descriptionFormatting';
+import { DESCRIPTION_LIMIT, DescriptionFormat, formatDescription, insertDescriptionText, parseDescriptionLine } from './descriptionFormatting';
+
+const emojis = ['✨', '🎨', '📸', '🎥', '🎵', '💡', '🚀', '🤝', '💻', '📍', '✅', '💜', '🌿', '🎉', '⭐', '📚'];
 
 export function DescriptionPreview({ value, fontSize = 16 }: { value: string; fontSize?: number }) {
   const lines = value.trim().split('\n');
   return <View style={{ gap: 5 }}>{lines.map((line, index) => {
     const bullet = /^\s*•\s*/.test(line);
-    const content = bullet ? line.replace(/^\s*•\s*/, '') : line;
-    return <View key={index} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: bullet ? 9 : 0 }}>
-      {bullet && <Text style={{ color: color.purple, fontSize, lineHeight: fontSize * 1.6 }}>•</Text>}
-      <Text style={{ flex: 1, color: color.ink, fontFamily: 'Nunito', fontSize, lineHeight: fontSize * 1.6 }}>
+    const numbered = /^\s*(\d+)\.\s+/.exec(line);
+    const heading = /^##\s+/.test(line);
+    const content = heading ? line.replace(/^##\s+/, '') : bullet ? line.replace(/^\s*•\s*/, '') : numbered ? line.replace(/^\s*\d+\.\s+/, '') : line;
+    return <View key={index} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: bullet || numbered ? 9 : 0 }}>
+      {(bullet || numbered) && <Text style={{ color: color.purple, fontFamily: 'Nunito', fontSize, lineHeight: fontSize * 1.6, fontWeight: '900' }}>{bullet ? '•' : `${numbered![1]}.`}</Text>}
+      <Text style={{ flex: 1, color: color.ink, fontFamily: 'Nunito', fontSize: heading ? fontSize + 2 : fontSize, fontWeight: heading ? '900' : '400', lineHeight: fontSize * 1.6 }}>
         {parseDescriptionLine(content).map((part, position) => <Text key={position} style={part.style === 'bold' ? { fontWeight: '900' } : part.style === 'italic' ? { fontStyle: 'italic' } : part.style === 'underline' ? { textDecorationLine: 'underline' } : undefined}>{part.text}</Text>)}
       </Text>
     </View>;
@@ -20,16 +24,46 @@ export function DescriptionPreview({ value, fontSize = 16 }: { value: string; fo
 export default function RichDescriptionEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [preview, setPreview] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
+  const inputRef = useRef<TextInput>(null);
   const tools: { format: DescriptionFormat; label: string; symbol: string }[] = [
     { format: 'bold', label: 'Bold', symbol: 'B' }, { format: 'italic', label: 'Italic', symbol: 'I' },
     { format: 'underline', label: 'Underline', symbol: 'U̲' }, { format: 'bullet', label: 'Bullet list', symbol: '• List' },
+    { format: 'numbered', label: 'Numbered list', symbol: '1. List' }, { format: 'heading', label: 'Heading', symbol: 'H2' },
   ];
-  return <View>
+  const apply = (format: DescriptionFormat, range = selection) => {
+    const next = formatDescription(value, range.start, range.end, format);
+    if (next.value.length > DESCRIPTION_LIMIT) return;
+    onChange(next.value); setSelection(next.selection); setPreview(false);
+  };
+  const insertEmoji = (emoji: string) => {
+    const next = insertDescriptionText(value, selection.start, selection.end, emoji);
+    if (next.value.length > DESCRIPTION_LIMIT) return;
+    onChange(next.value); setSelection(next.selection); setPreview(false);
+  };
+  const onWebKeyDown = (event: KeyboardEvent) => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+    const format = ({ b: 'bold', i: 'italic', u: 'underline' } as const)[event.key.toLowerCase() as 'b' | 'i' | 'u'];
+    if (!format) return;
+    event.preventDefault();
+    const field = event.currentTarget as HTMLTextAreaElement;
+    apply(format, { start: field.selectionStart, end: field.selectionEnd });
+  };
+  useEffect(() => {
+    if (Platform.OS !== 'web' || preview) return;
+    const node = inputRef.current as unknown as HTMLTextAreaElement | null;
+    if (!node?.addEventListener) return;
+    node.addEventListener('keydown', onWebKeyDown, true);
+    return () => node.removeEventListener('keydown', onWebKeyDown, true);
+  });
+  return <View style={{ borderWidth: 1, borderColor: '#e6dafa', borderRadius: 18, backgroundColor: '#fff', padding: 12 }}>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-      {tools.map(tool => <Pressable key={tool.format} accessibilityRole="button" accessibilityLabel={tool.label} onPress={() => { const next = formatDescription(value, selection.start, selection.end, tool.format); onChange(next.value); setSelection(next.selection); setPreview(false); }} style={{ minWidth: 36, paddingHorizontal: 11, paddingVertical: 7, borderWidth: 1, borderColor: '#e9dff5', borderRadius: 10, backgroundColor: '#faf7ff', alignItems: 'center' }}><Text style={{ color: color.purple, fontFamily: 'Nunito', fontWeight: tool.format === 'bold' ? '900' : '800', fontStyle: tool.format === 'italic' ? 'italic' : 'normal', fontSize: 13 }}>{tool.symbol}</Text></Pressable>)}
+      {tools.map(tool => <Pressable key={tool.format} accessibilityRole="button" accessibilityLabel={tool.label} onPress={() => apply(tool.format)} style={{ minWidth: 36, paddingHorizontal: 11, paddingVertical: 7, borderWidth: 1, borderColor: '#e9dff5', borderRadius: 10, backgroundColor: '#faf7ff', alignItems: 'center' }}><Text style={{ color: color.purple, fontFamily: 'Nunito', fontWeight: tool.format === 'bold' ? '900' : '800', fontStyle: tool.format === 'italic' ? 'italic' : 'normal', fontSize: 13 }}>{tool.symbol}</Text></Pressable>)}
+      <Pressable accessibilityRole="button" accessibilityLabel="Choose an emoji" onPress={() => setShowEmojis(current => !current)} style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: showEmojis ? '#eadcff' : '#faf7ff', borderWidth: 1, borderColor: '#e9dff5' }}><Text style={{ fontSize: 14 }}>😊 Emoji</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={() => setPreview(current => !current)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: preview ? color.purple : '#f2eaff' }}><Text style={{ color: preview ? '#fff' : color.purple, fontFamily: 'Nunito', fontWeight: '900', fontSize: 12 }}>{preview ? 'Edit' : 'Preview'}</Text></Pressable>
     </View>
-    {preview ? <View style={{ minHeight: 125, borderWidth: 1, borderColor: '#e6dff0', borderRadius: 13, backgroundColor: '#fff', padding: 12 }}><DescriptionPreview value={value || 'Your description will appear here.'} fontSize={14} /></View> : <TextInput accessibilityLabel="Description" value={value} onChangeText={onChange} onSelectionChange={event => setSelection(event.nativeEvent.selection)} selection={selection} placeholder="Describe your experience, services, process and the work you love doing" placeholderTextColor="#9992a8" multiline textAlignVertical="top" style={{ minHeight: 125, borderWidth: 1, borderColor: '#e6dff0', borderRadius: 13, backgroundColor: '#fff', padding: 12, color: color.ink, fontFamily: 'Nunito', fontSize: 14 }} />}
-    <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 11, marginTop: 5 }}>Select text, then choose a format. Preview shows how it appears on your profile.</Text>
+    {showEmojis && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, backgroundColor: '#faf7ff', borderRadius: 12, padding: 8, marginBottom: 10 }}>{emojis.map(emoji => <Pressable key={emoji} accessibilityRole="button" accessibilityLabel={`Insert ${emoji}`} onPress={() => insertEmoji(emoji)} style={{ width: 33, height: 33, alignItems: 'center', justifyContent: 'center', borderRadius: 9, backgroundColor: '#fff' }}><Text style={{ fontSize: 20 }}>{emoji}</Text></Pressable>)}</View>}
+    {preview ? <View style={{ minHeight: 145, borderWidth: 1, borderColor: '#e6dff0', borderRadius: 13, backgroundColor: '#fff', padding: 12 }}><DescriptionPreview value={value || 'Your description will appear here.'} fontSize={14} /></View> : <TextInput ref={inputRef} accessibilityLabel="Description" value={value} maxLength={DESCRIPTION_LIMIT} onChangeText={text => onChange(text.slice(0, DESCRIPTION_LIMIT))} onSelectionChange={event => setSelection(event.nativeEvent.selection)} selection={selection} placeholder="Describe your experience, services, process and the work you love doing" placeholderTextColor="#9992a8" multiline textAlignVertical="top" style={{ minHeight: 170, borderWidth: 1, borderColor: '#e6dff0', borderRadius: 13, backgroundColor: '#fff', padding: 12, color: color.ink, fontFamily: 'Nunito', fontSize: 14 }} />}
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginTop: 8 }}><Text style={{ flex: 1, color: color.muted, fontFamily: 'Nunito', fontSize: 11 }}>Select text to format. Ctrl+B, Ctrl+I and Ctrl+U work here (⌘ on Mac).</Text><Text accessibilityLabel={`${value.length} of ${DESCRIPTION_LIMIT} characters`} style={{ color: value.length > DESCRIPTION_LIMIT * .9 ? color.coral : color.muted, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900' }}>{value.length}/{DESCRIPTION_LIMIT}</Text></View>
   </View>;
 }

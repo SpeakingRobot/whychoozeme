@@ -30,3 +30,15 @@ test('hourly exposure is capped, not paid automatically', () => {
 test('conditional compensation needs explicit basis', () => {
   expect(validateTerms({ ...base, model: 'commission' })).toContain('Describe the payment trigger and calculation.');
 });
+
+test('milestone total comes from explicit accepted stages', () => {
+  const stages = [
+    { title: 'First draft', amountMinor: 40000, acceptanceCriteria: 'Finder approves the draft' },
+    { title: 'Final files', amountMinor: 60000, acceptanceCriteria: 'Finder approves the final files' },
+  ];
+  const terms = { ...base, model: 'milestone' as const, rateMinor: undefined, milestones: stages };
+  expect(validateTerms(terms)).toEqual([]);
+  expect(estimatePrice(terms)).toMatchObject({ kind: 'fixed', amountMinor: 100000 });
+  expect(validateTerms({ ...terms, milestones: [{ ...stages[0], amountMinor: undefined }] })).toContain('Add 1–20 milestones with a title, positive payment amount, and acceptance criteria.');
+  expect(validateTerms({ ...terms, milestones: [] })).toContain('Add 1–20 milestones with a title, positive payment amount, and acceptance criteria.');
+});

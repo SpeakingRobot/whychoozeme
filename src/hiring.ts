@@ -37,6 +37,7 @@ export type MoneyTerms = {
   commissionPercent?: number;
   conditionalBasis?: string;
   paymentSchedule?: string;
+  milestones?: { title: string; amountMinor?: number; dueAt?: string; acceptanceCriteria: string }[];
 };
 
 export type PriceEstimate = { kind: 'fixed' | 'estimated' | 'cap' | 'recurring' | 'conditional'; amountMinor?: number; explanation: string };
@@ -44,6 +45,7 @@ export function estimatePrice(terms: MoneyTerms): PriceEstimate {
   const { model, rateMinor, quantity, estimatedHours, totalCapMinor } = terms;
   if (['commission', 'performance', 'value', 'hybrid'].includes(model))
     return { kind: 'conditional', explanation: 'Payment depends on the explicitly agreed trigger and calculation.' };
+  if (model === 'milestone') return { kind: 'fixed', amountMinor: terms.milestones?.length && terms.milestones.every(stage => stage.amountMinor !== undefined) ? terms.milestones.reduce((sum, stage) => sum + (stage.amountMinor || 0), 0) : undefined, explanation: 'Sum of agreed stage payments. Each stage is payable only after its deliverable is accepted.' };
   if (model === 'hourly') return { kind: totalCapMinor ? 'cap' : 'estimated', amountMinor: totalCapMinor ?? (rateMinor && estimatedHours ? rateMinor * estimatedHours : undefined), explanation: totalCapMinor ? 'Maximum authorized spend; only approved eligible hours are payable.' : 'Estimate only; eligible approved hours determine the invoice.' };
   if (['weekly', 'monthly', 'subscription', 'recurring', 'standby'].includes(model))
     return { kind: 'recurring', amountMinor: rateMinor, explanation: 'Charge per agreed billing period, subject to the written allowance and terms.' };
@@ -63,7 +65,6 @@ export type ProposalTerms = MoneyTerms & {
   availabilityMode: AvailabilityMode;
   weeklyEffortHours?: number;
   revisions?: number;
-  milestones?: { title: string; amountMinor?: number; dueAt?: string; acceptanceCriteria: string }[];
   specialConditions?: string;
 };
 
@@ -76,6 +77,7 @@ export function validateTerms(t: ProposalTerms): string[] {
   if (t.startAt && t.endAt && Date.parse(t.startAt) >= Date.parse(t.endAt)) errors.push('The end must follow the start.');
   if (['exclusive', 'appointment'].includes(t.availabilityMode) && (!t.startAt || !t.endAt)) errors.push('Reserved work requires exact start and end times.');
   if (t.model === 'hourly' && (!t.rateMinor || !t.totalCapMinor || !t.weeklyHourCap)) errors.push('Hourly work needs a rate, weekly hour cap, and total budget cap.');
+  if (t.model === 'milestone' && (!t.milestones?.length || t.milestones.length > 20 || t.milestones.some(stage => stage.title.trim().length < 3 || stage.acceptanceCriteria.trim().length < 5 || !Number.isSafeInteger(stage.amountMinor) || (stage.amountMinor || 0) <= 0))) errors.push('Add 1–20 milestones with a title, positive payment amount, and acceptance criteria.');
   if (['commission', 'performance', 'value', 'hybrid'].includes(t.model) && !t.conditionalBasis?.trim()) errors.push('Describe the payment trigger and calculation.');
   if (t.rateMinor !== undefined && (!Number.isSafeInteger(t.rateMinor) || t.rateMinor < 0)) errors.push('Enter a valid nonnegative rate.');
   return errors;

@@ -1,4 +1,4 @@
-import { formatDescription, parseDescriptionLine } from '../src/descriptionFormatting';
+import { DESCRIPTION_LIMIT, formatDescription, insertDescriptionText, parseDescriptionLine } from '../src/descriptionFormatting';
 
 describe('profile description formatting', () => {
   it('formats a selected phrase without changing surrounding text', () => {
@@ -17,5 +17,13 @@ describe('profile description formatting', () => {
       { text: 'warm', style: 'italic' }, { text: ' ' },
       { text: 'underlined', style: 'underline' }, { text: ' note' },
     ]);
+  });
+
+  it('supports headings, numbered lines, toggled emphasis and emoji insertion', () => {
+    expect(DESCRIPTION_LIMIT).toBe(2500);
+    expect(formatDescription('First\nSecond', 0, 12, 'numbered').value).toBe('1. First\n2. Second');
+    expect(formatDescription('About me', 0, 8, 'heading').value).toBe('## About me');
+    expect(formatDescription('**hello**', 2, 7, 'bold').value).toBe('hello');
+    expect(insertDescriptionText('Hello world', 6, 11, '✨').value).toBe('Hello ✨');
   });
 });

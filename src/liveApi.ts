@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Category, Freelancer, RequestPost, talukaCenters, Taluka } from './data';
 import { liveEnabled, supabasePublishableKey, supabaseUrl } from './supabaseConfig';
 import { normalizeLinks, normalizeSoftware, PortfolioLink, SoftwareSkill } from './software';
+import { DESCRIPTION_LIMIT } from './descriptionFormatting';
 
 export const db: SupabaseClient | null = liveEnabled ? createClient(supabaseUrl, supabasePublishableKey, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: Platform.OS === 'web', ...(Platform.OS === 'web' ? {} : { storage: AsyncStorage }) },
@@ -91,7 +92,7 @@ export async function getCategories(): Promise<Category[]> {
 export async function saveFreelancer(userId: string, person: Freelancer) {
   unwrap(await assertDb().from('freelancer_profiles').upsert({ user_id: userId, display_name: person.name,
     role_title: person.role, category_slug: person.category, tags: person.tags, taluka: person.taluka,
-    locality: person.place, latitude: person.lat, longitude: person.lon, why_me: person.why, description: (person.description || '').slice(0, 5000), software_skills: normalizeSoftware(person.software), portfolio_links: normalizeLinks(person.links), portfolio: person.work, image_url: person.imageUrl || null }));
+    locality: person.place, latitude: person.lat, longitude: person.lon, why_me: person.why, description: (person.description || '').slice(0, DESCRIPTION_LIMIT), software_skills: normalizeSoftware(person.software), portfolio_links: normalizeLinks(person.links), portfolio: person.work, image_url: person.imageUrl || null }));
 }
 export async function savePortfolioLinks(userId: string, links: PortfolioLink[]) {
   unwrap(await assertDb().from('freelancer_profiles').update({ portfolio_links: normalizeLinks(links) }).eq('user_id', userId));
