@@ -6,20 +6,23 @@ import { Button, color, Heading } from './UI';
 type Props = {
   name: string;
   busy: DateRange[];
+  ownBlocks?: { id: string; start: string; end: string }[];
   owner: boolean;
   example?: boolean;
   readOnly?: boolean;
   onBlock: (range: DateRange) => void;
+  onRemoveBlock?: (id: string) => Promise<void>;
   onRequest: (range: DateRange, note: string) => void;
 };
 
-export default function AvailabilityCalendar({ name, busy, owner, example = false, readOnly = false, onBlock, onRequest }: Props) {
+export default function AvailabilityCalendar({ name, busy, ownBlocks = [], owner, example = false, readOnly = false, onBlock, onRemoveBlock, onRequest }: Props) {
   const today = isoDay(new Date());
   const [monthOffset, setMonthOffset] = useState(0);
   const [start, setStart] = useState<string | null>(null);
   const [end, setEnd] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [removing, setRemoving] = useState<string | null>(null);
   const month = new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1);
   const firstWeekday = (month.getDay() + 6) % 7;
   const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
@@ -49,6 +52,9 @@ export default function AvailabilityCalendar({ name, busy, owner, example = fals
       return <View key={day} style={{ width: '14.285%', padding: 2 }}><Pressable accessibilityRole="button" accessibilityLabel={`${readableDay(day)}${example ? ', no live schedule' : isBusy ? ', busy' : isPast ? ', past' : ', available'}`} disabled={example || isPast || isBusy} onPress={() => choose(day)} style={{ height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: isSelected ? color.purple : isBusy ? '#ffe7e6' : '#f8f5fc' }}><Text style={{ fontFamily: 'Nunito', fontWeight: '900', fontSize: 13, color: isSelected ? '#fff' : isBusy ? '#b94e54' : isPast ? '#b4afbb' : color.ink }}>{day.slice(-2).replace(/^0/, '')}</Text></Pressable></View>;
     })}</View>
     {!example && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 13, marginTop: 13 }}>{[['#ffe7e6', 'Booked / busy'], ['#f8f5fc', 'Available'], [color.purple, 'Selected']].map(([backgroundColor, title]) => <View key={title} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}><View style={{ width: 11, height: 11, borderRadius: 4, backgroundColor }} /><Text style={{ fontFamily: 'Nunito', color: color.muted, fontSize: 11 }}>{title}</Text></View>)}</View>}
+    {owner && <View style={{ marginTop: 17, borderTopWidth: 1, borderTopColor: color.line, paddingTop: 14 }}><Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 14 }}>Your blocked dates</Text><Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12, marginTop: 3 }}>Remove a range here to make those dates available again. Booked appointments cannot be cleared here.</Text>
+      {ownBlocks.filter(block => block.end >= today).length ? ownBlocks.filter(block => block.end >= today).map(block => <View key={block.id} style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 9, padding: 10, borderRadius: 12, backgroundColor: '#fff2ef', marginTop: 8 }}><Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 12, fontWeight: '800' }}>{readableDay(block.start)}{block.end !== block.start ? ` – ${readableDay(block.end)}` : ''}</Text><Pressable accessibilityRole="button" accessibilityLabel={`Remove busy range ${block.start} to ${block.end}`} disabled={removing === block.id} onPress={async () => { if (!onRemoveBlock) return; setRemoving(block.id); setError(''); try { await onRemoveBlock(block.id); } catch (cause) { setError((cause as Error).message); } finally { setRemoving(null); } }}><Text style={{ color: color.coral, fontFamily: 'Nunito', fontWeight: '900', fontSize: 12 }}>{removing === block.id ? 'Removing…' : 'Remove dates'}</Text></Pressable></View>) : <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12, marginTop: 8 }}>No blocked dates to remove.</Text>}
+    </View>}
     <Text style={{ fontFamily: 'Nunito', color: color.ink, marginTop: 17, fontWeight: '900', fontSize: 13 }}>{example ? 'Availability will appear when this profile posts a schedule.' : selected ? `${readableDay(selected.start)}${selected.end !== selected.start ? ` – ${readableDay(selected.end)}` : ''}` : 'Tap a start date, then an end date.'}</Text>
     {!owner && !readOnly && <TextInput accessibilityLabel="Project details" value={note} onChangeText={setNote} placeholder="Tell them about your project and timing..." placeholderTextColor="#9693ab" multiline style={{ marginTop: 10, minHeight: 77, borderWidth: 1, borderColor: color.line, borderRadius: 14, padding: 12, fontFamily: 'Nunito', color: color.ink, textAlignVertical: 'top' }} />}
     {!!error && <Text style={{ fontFamily: 'Nunito', color: color.coral, fontSize: 12, marginTop: 9 }}>{error}</Text>}

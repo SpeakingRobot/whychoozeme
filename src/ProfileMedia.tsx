@@ -4,6 +4,7 @@ import { Freelancer } from './data';
 import { samplePortfolio } from './portfolio';
 import { Button, color, Field, Heading } from './UI';
 import { PortfolioLink, publicHttpsUrl } from './software';
+import { DescriptionPreview } from './RichDescription';
 
 export type ProfileDocument = { name: string; size: number; uri: string };
 const info = { color: color.muted, fontFamily: 'Nunito' as const, fontSize: 12 };
@@ -64,7 +65,7 @@ export default function ProfileMedia({ profile, narrow, canEdit, photos, video, 
     {tab === 'Description' && <View style={section}>
       <View style={{ maxWidth: 850, gap: 10 }}>
         <Heading size={23}>Description <Text style={{ color: color.coral }}>✦</Text></Heading>
-        <Text style={{ fontFamily: 'Nunito', color: color.ink, fontSize: narrow ? 15 : 16, lineHeight: narrow ? 24 : 27 }}>{profile.description?.trim() || profile.why?.trim() || 'No description added yet.'}</Text>
+        <DescriptionPreview value={profile.description?.trim() || profile.why?.trim() || 'No description added yet.'} fontSize={narrow ? 15 : 16} />
       </View>
     </View>}
     {tab === 'Photos' && <View style={section}><View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 9 }}><Text style={[info, { fontWeight: '800' }]}>Photos and portfolio highlights</Text>{canEdit && <Button outline onPress={onAddPhotos} disabled={photos.length >= 20} style={{ minHeight: 37 }} textStyle={{ fontSize: 12 }}>+ Add photos</Button>}</View>
@@ -81,7 +82,7 @@ export default function ProfileMedia({ profile, narrow, canEdit, photos, video, 
     </View>}
     {tab === 'Links' && <View style={section}><Heading size={23}>Links <Text style={{ color: color.coral }}>↗</Text></Heading><Text style={[info, { marginTop: 3 }]}>Websites, project pages, Google Drive portfolios and other work.</Text>
       {links.length ? <View style={{ gap: 8, marginTop: 16 }}>{links.map((item, index) => <View key={`${item.url}-${index}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1, borderColor: '#eae2f5', borderRadius: 15, backgroundColor: '#fcfaff', padding: 11 }}><View style={{ width: 35, height: 35, borderRadius: 11, backgroundColor: '#f1e9ff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.purple, fontSize: 18 }}>↗</Text></View><View style={{ flex: 1, minWidth: 0 }}><Pressable accessibilityRole="link" accessibilityLabel={`Open ${item.title}`} onPress={() => Linking.openURL(item.url)}><Text style={{ color: color.purple, fontFamily: 'Nunito', fontWeight: '900' }} numberOfLines={1}>{item.title}</Text></Pressable><Text style={info} numberOfLines={1}>{new URL(item.url).hostname}</Text></View>{canEdit && <Pressable accessibilityRole="button" accessibilityLabel={`Remove link ${item.title}`} onPress={() => saveLink(links.filter((_, position) => position !== index))} disabled={savingLink}><Text style={{ color: color.coral, fontSize: 22 }}>×</Text></Pressable>}</View>)}</View> : <View style={{ padding: 23, backgroundColor: '#f8f5fc', borderRadius: 15, marginTop: 15 }}><Text style={[info, { textAlign: 'center' }]}>No links added yet.</Text></View>}
-      {canEdit && <View style={{ marginTop: 17, gap: 8 }}><Field value={linkTitle} onChangeText={setLinkTitle} placeholder="Link title, e.g. My portfolio" /><Field value={linkUrl} onChangeText={setLinkUrl} placeholder="https://your-portfolio.com" /><Button outline flat disabled={savingLink} onPress={addLink} style={{ alignSelf: 'flex-start' }}>+ Add link</Button>{!!linkError && <Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 12 }}>{linkError}</Text>}</View>}
+      {canEdit && <View style={{ marginTop: 17, gap: 8 }}><Text style={[info, { fontWeight: '900' }]}>Add a separate link</Text><Field value={linkTitle} onChangeText={setLinkTitle} placeholder="Link title, e.g. My portfolio" /><Field value={linkUrl} onChangeText={setLinkUrl} placeholder="https://your-portfolio.com" /><Button outline flat disabled={savingLink} onPress={addLink} style={{ alignSelf: 'flex-start' }}>{savingLink ? 'Saving…' : 'Save link'}</Button>{!!linkError && <Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 12 }}>{linkError}</Text>}</View>}
     </View>}
   </View>;
 }
