@@ -50,7 +50,7 @@ export default function HomeHighlights({ kind, compact, people, requests, catego
     const counts = new Map<string, number>();
     (kind === 'hiring' ? requests.map(item => item.category) : people.map(item => item.category)).forEach(id => counts.set(id, (counts.get(id) || 0) + 1));
     const picks = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, kind === 'categories' ? 6 : 3);
-    heading = kind === 'hiring' ? 'Popular hiring right now' : 'Explore by specialty';
+    heading = kind === 'hiring' ? 'Popular requests right now' : 'Explore by specialty';
     subtitle = kind === 'hiring' ? 'See the kinds of briefs Finders are sharing.' : 'Follow the work that catches your eye.';
     picks.forEach(([id, count]) => { const category = categoryFor(id); cards.push({ key: id, eyebrow: kind === 'hiring' ? `${count} ${count === 1 ? 'BRIEF' : 'BRIEFS'}` : `${count} ${count === 1 ? 'CREATIVE' : 'CREATIVES'}`, title: category.label, detail: kind === 'hiring' ? 'Explore current requirements.' : 'Meet people in this specialty.', icon: category.icon, onPress: kind === 'hiring' ? onRequests : () => onCategory(category) }); });
   }

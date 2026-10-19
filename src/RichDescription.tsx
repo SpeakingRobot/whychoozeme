@@ -21,7 +21,7 @@ export function DescriptionPreview({ value, fontSize = 16 }: { value: string; fo
   })}</View>;
 }
 
-export default function RichDescriptionEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export default function RichDescriptionEditor({ value, onChange, maxLength = DESCRIPTION_LIMIT, placeholder = 'Describe your experience, services, process and the work you love doing', accessibilityLabel = 'Description' }: { value: string; onChange: (value: string) => void; maxLength?: number; placeholder?: string; accessibilityLabel?: string }) {
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [preview, setPreview] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
@@ -33,12 +33,12 @@ export default function RichDescriptionEditor({ value, onChange }: { value: stri
   ];
   const apply = (format: DescriptionFormat, range = selection) => {
     const next = formatDescription(value, range.start, range.end, format);
-    if (next.value.length > DESCRIPTION_LIMIT) return;
+    if (next.value.length > maxLength) return;
     onChange(next.value); setSelection(next.selection); setPreview(false);
   };
   const insertEmoji = (emoji: string) => {
     const next = insertDescriptionText(value, selection.start, selection.end, emoji);
-    if (next.value.length > DESCRIPTION_LIMIT) return;
+    if (next.value.length > maxLength) return;
     onChange(next.value); setSelection(next.selection); setPreview(false);
   };
   const onWebKeyDown = (event: KeyboardEvent) => {
@@ -63,7 +63,7 @@ export default function RichDescriptionEditor({ value, onChange }: { value: stri
       <Pressable accessibilityRole="button" onPress={() => setPreview(current => !current)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: preview ? color.purple : '#f2eaff' }}><Text style={{ color: preview ? '#fff' : color.purple, fontFamily: 'Nunito', fontWeight: '900', fontSize: 12 }}>{preview ? 'Edit' : 'Preview'}</Text></Pressable>
     </View>
     {showEmojis && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, backgroundColor: '#faf7ff', borderRadius: 12, padding: 8, marginBottom: 10 }}>{emojis.map(emoji => <Pressable key={emoji} accessibilityRole="button" accessibilityLabel={`Insert ${emoji}`} onPress={() => insertEmoji(emoji)} style={{ width: 33, height: 33, alignItems: 'center', justifyContent: 'center', borderRadius: 9, backgroundColor: '#fff' }}><Text style={{ fontSize: 20 }}>{emoji}</Text></Pressable>)}</View>}
-    {preview ? <View style={{ minHeight: 145, borderWidth: 1, borderColor: '#e6dff0', borderRadius: 13, backgroundColor: '#fff', padding: 12 }}><DescriptionPreview value={value || 'Your description will appear here.'} fontSize={14} /></View> : <TextInput ref={inputRef} accessibilityLabel="Description" value={value} maxLength={DESCRIPTION_LIMIT} onChangeText={text => onChange(text.slice(0, DESCRIPTION_LIMIT))} onSelectionChange={event => setSelection(event.nativeEvent.selection)} selection={selection} placeholder="Describe your experience, services, process and the work you love doing" placeholderTextColor="#9992a8" multiline textAlignVertical="top" style={{ minHeight: 170, borderWidth: 1, borderColor: '#e6dff0', borderRadius: 13, backgroundColor: '#fff', padding: 12, color: color.ink, fontFamily: 'Nunito', fontSize: 14 }} />}
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginTop: 8 }}><Text style={{ flex: 1, color: color.muted, fontFamily: 'Nunito', fontSize: 11 }}>Select text to format. Ctrl+B, Ctrl+I and Ctrl+U work here (⌘ on Mac).</Text><Text accessibilityLabel={`${value.length} of ${DESCRIPTION_LIMIT} characters`} style={{ color: value.length > DESCRIPTION_LIMIT * .9 ? color.coral : color.muted, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900' }}>{value.length}/{DESCRIPTION_LIMIT}</Text></View>
+    {preview ? <View style={{ minHeight: 145, borderWidth: 1, borderColor: '#e6dff0', borderRadius: 13, backgroundColor: '#fff', padding: 12 }}><DescriptionPreview value={value || 'Your text will appear here.'} fontSize={14} /></View> : <TextInput ref={inputRef} accessibilityLabel={accessibilityLabel} value={value} maxLength={maxLength} onChangeText={text => onChange(text.slice(0, maxLength))} onSelectionChange={event => setSelection(event.nativeEvent.selection)} selection={selection} placeholder={placeholder} placeholderTextColor="#9992a8" multiline textAlignVertical="top" style={{ minHeight: 170, borderWidth: 1, borderColor: '#e6dff0', borderRadius: 13, backgroundColor: '#fff', padding: 12, color: color.ink, fontFamily: 'Nunito', fontSize: 14 }} />}
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginTop: 8 }}><Text style={{ flex: 1, color: color.muted, fontFamily: 'Nunito', fontSize: 11 }}>Select text to format. Ctrl+B, Ctrl+I and Ctrl+U work here (⌘ on Mac).</Text><Text accessibilityLabel={`${value.length} of ${maxLength} characters`} style={{ color: value.length > maxLength * .9 ? color.coral : color.muted, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900' }}>{value.length}/{maxLength}</Text></View>
   </View>;
 }

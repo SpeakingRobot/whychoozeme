@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Linking, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Freelancer } from './data';
 import { Button, color, Heading, Portrait } from './UI';
-import { CalendarIcon } from './icons';
-import InquiryActionButton from './InquiryActionButton';
 import PresenceStatus, { presenceLabel } from './PresenceStatus';
 import ResponseBadge from './ResponseBadge';
 import { SoftwareMark } from './SoftwarePicker';
+import { publicWhatsapp } from './whatsapp';
 
 type Props = {
   profile: Freelancer;
@@ -16,20 +15,18 @@ type Props = {
   reviewCount: number;
   saved: boolean;
   onChat: () => void;
-  chatReady: boolean;
   onSave: () => void;
   onMap: () => void;
-  onAvailability: () => void;
 };
 
-export default function ProfileWall({ profile, compact, narrow, rating, reviewCount, saved, onChat, chatReady, onSave, onMap, onAvailability }: Props) {
+export default function ProfileWall({ profile, compact, narrow, rating, reviewCount, saved, onChat, onSave, onMap }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const isPhone = compact;
   const isTablet = screenWidth < 1100;
   const portraitSize = isPhone ? 170 : isTablet ? 184 : screenWidth >= 1500 ? 320 : 256;
   const text = { fontFamily: 'Nunito' as const, color: color.ink };
-  const [availabilityHovered, setAvailabilityHovered] = useState(false);
   const [showAllSoftware, setShowAllSoftware] = useState(false);
+  const whatsapp = publicWhatsapp(profile.links);
   const roleBadge = <View accessibilityLabel={`Skill: ${profile.role}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#fff1df', borderRadius: 22, paddingHorizontal: 14, paddingVertical: 8 }}>
     <Text style={{ color: '#bc7416', fontSize: 15 }}>✦</Text>
     <Text style={[text, { color: '#865018', fontSize: 14, fontWeight: '900' }]}>{profile.role}</Text>
@@ -71,16 +68,10 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
         {!!profile.software?.length && <View style={{ alignItems: isPhone ? 'center' : 'flex-start' }}><Text style={{ color: color.muted, fontFamily: 'Nunito', fontWeight: '900', fontSize: 12, marginBottom: 9, letterSpacing: 1.1 }}>SOFTWARE & TOOLS</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: isPhone ? 'center' : 'flex-start', gap: 8 }}>{profile.software.slice(0, showAllSoftware ? undefined : 8).map(skill => <View key={`${skill.name}-${skill.slug || skill.website || ''}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 18, backgroundColor: '#f8f7fb', paddingHorizontal: 11, paddingVertical: 7 }}><SoftwareMark skill={skill} size={18} /><Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 11, fontWeight: '800' }}>{skill.name}</Text></View>)}{profile.software.length > 8 && <Pressable accessibilityRole="button" onPress={() => setShowAllSoftware(value => !value)} style={{ paddingHorizontal: 11, paddingVertical: 9, borderRadius: 16, backgroundColor: '#f1e9ff' }}><Text style={{ color: color.purple, fontSize: 11, fontFamily: 'Nunito', fontWeight: '900' }}>{showAllSoftware ? 'Show less' : `+${profile.software.length - 8} more`}</Text></Pressable>}</View></View>}
 
         <View style={{ marginTop: isPhone ? 3 : 7, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#eee8f3', flexDirection: isPhone ? 'column' : 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: isPhone ? 'center' : 'flex-start', alignItems: 'center', gap: isTablet ? 12 : 24, flex: isPhone ? undefined : 1 }}>
-            <Pressable accessibilityRole="button" accessibilityLabel="See availability" onPress={onAvailability} onHoverIn={() => setAvailabilityHovered(true)} onHoverOut={() => setAvailabilityHovered(false)} style={({ pressed }) => [{ minHeight: 54, paddingHorizontal: 7, flexDirection: 'row', alignItems: 'center', gap: 10, transform: [{ scale: pressed ? .98 : 1 }] }, Platform.OS === 'web' ? { cursor: 'pointer', opacity: availabilityHovered ? .72 : 1, transition: 'opacity 180ms ease, transform 180ms ease' } as any : null]}>
-              <CalendarIcon color={color.purple} size={23} />
-              <View><Text style={{ color: color.purple, fontSize: 15, fontFamily: 'Nunito', fontWeight: '900' }}>See availability →</Text><Text style={{ color: color.muted, fontSize: 11, fontFamily: 'Nunito' }}>Check open dates</Text></View>
-            </Pressable>
-            <View style={{ width: 1, height: 42, backgroundColor: '#ece5f3' }} />
-            <ResponseBadge person={profile} profile />
-          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: isPhone ? 'center' : 'flex-start', alignItems: 'center', gap: 12, flex: isPhone ? undefined : 1 }}><ResponseBadge person={profile} profile /></View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10, width: isPhone ? '100%' : undefined }}>
-            <View style={{ flex: isPhone ? 1 : undefined }}>{chatReady ? <Button onPress={onChat} flat style={{ minHeight: 52, minWidth: isPhone ? undefined : 180, width: isPhone ? '100%' : undefined }}>Open chat</Button> : <InquiryActionButton name={profile.name} onPress={onChat} flat primary />}</View>
+            <View style={{ flex: isPhone ? 1 : undefined }}><Button onPress={onChat} flat style={{ minHeight: 52, minWidth: isPhone ? undefined : 150, width: isPhone ? '100%' : undefined }}>Message</Button></View>
+            {!!whatsapp && <Button outline onPress={() => Linking.openURL(whatsapp)} style={{ minHeight: 52 }}>WhatsApp ↗</Button>}
             <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Remove saved profile' : 'Save profile'} onPress={onSave} style={{ width: 52, height: 52, borderRadius: 17, backgroundColor: '#f4edff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.purple, fontSize: 26 }}>{saved ? '♥' : '♡'}</Text></Pressable>
           </View>
         </View>

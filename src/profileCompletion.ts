@@ -1,5 +1,5 @@
 export type SetupRole = 'finder' | 'freelancer';
-export type SetupStep = 'role' | 'finder' | 'freelancer' | 'work' | 'signature';
+export type SetupStep = 'role' | 'finder' | 'freelancer';
 
 export type CompletionState = {
   role: SetupRole | null;
@@ -7,15 +7,11 @@ export type CompletionState = {
   freelancer: boolean;
   photo: boolean;
   description: boolean;
-  work: boolean;
-  signature: boolean;
 };
 
 export function setupSteps(state: CompletionState): SetupStep[] {
   if (!state.role) return ['role'];
-  return state.role === 'finder'
-    ? ['finder', 'signature']
-    : ['freelancer', 'work', 'signature'];
+  return state.role === 'finder' ? ['finder'] : ['freelancer'];
 }
 
 export function stepComplete(step: SetupStep, state: CompletionState): boolean {
@@ -23,8 +19,6 @@ export function stepComplete(step: SetupStep, state: CompletionState): boolean {
     case 'role': return !!state.role;
     case 'finder': return state.finder;
     case 'freelancer': return state.freelancer && state.photo && state.description;
-    case 'work': return state.work;
-    case 'signature': return state.signature;
   }
 }
 

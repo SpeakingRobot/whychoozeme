@@ -1,19 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { Linking, Platform, Pressable, Text, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, Text, View } from 'react-native';
 import { Button, color, Field, Heading, TinyTag } from './UI';
 import { Freelancer } from './data';
 import { Inquiry, InquiryAttachment, InquiryInput, decideInquiry, listAttachments, referenceUrl, submitInquiry } from './inquiryApi';
+import RichDescriptionEditor, { DescriptionPreview } from './RichDescription';
 
 const note = { fontFamily: 'Nunito' as const, color: color.muted, fontSize: 13 };
 const label = { fontFamily: 'Nunito' as const, color: color.ink, fontWeight: '900' as const, fontSize: 13, marginTop: 13, marginBottom: 6 };
+const workModeLabel = (mode: Inquiry['work_mode']) => mode === 'either' ? 'Hybrid' : mode === 'in_person' ? 'On-site' : 'Remote';
+
+function DateField({ value, onChange, minimum, label: fieldLabel }: { value: string; onChange: (value: string) => void; minimum?: string; label: string }) {
+  return <View style={{ flex: 1, minWidth: 145 }}><Text style={[note, { marginBottom: 5 }]}>{fieldLabel}</Text>{Platform.OS === 'web'
+    ? <input aria-label={fieldLabel} type="date" value={value} min={minimum} onChange={event => onChange(event.target.value)} style={{ width: '100%', minHeight: 48, boxSizing: 'border-box', border: '1px solid #e9e4ee', borderRadius: 14, padding: '9px 12px', color: '#111638', background: '#fff', fontFamily: 'Nunito', fontSize: 14 }} />
+    : <Field value={value} onChangeText={onChange} placeholder="YYYY-MM-DD" />}</View>;
+}
 
 export function InquiryForm({ person, finderId, onClose, onSent }: { person: Freelancer; finderId: string; onClose: () => void; onSent: (failed: string[]) => void }) {
   const [value, setValue] = useState<InquiryInput>({ title: '', requirements: '', work_mode: 'either' });
-  const [files, setFiles] = useState<File[]>([]), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [files, setFiles] = useState<File[]>([]), [previews, setPreviews] = useState<string[]>([]), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  useEffect(() => { if (Platform.OS !== 'web') return; const urls = files.map(file => URL.createObjectURL(file)); setPreviews(urls); return () => urls.forEach(url => URL.revokeObjectURL(url)); }, [files]);
   const pick = () => {
     if (Platform.OS !== 'web') { setError('Reference image upload is currently available on the web app.'); return; }
     const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp'; input.multiple = true;
-    input.onchange = () => setFiles(previous => [...previous, ...Array.from(input.files || [])].slice(0, 5)); input.click();
+    input.onchange = () => { const selected = Array.from(input.files || []); setFiles(previous => [...previous, ...selected].slice(0, 5)); }; input.click();
   };
   const send = async () => {
     setBusy(true); setError('');
@@ -26,11 +35,11 @@ export function InquiryForm({ person, finderId, onClose, onSent }: { person: Fre
     <Text style={[note, { marginTop: 6 }]}>Share your requirements. Chat opens when {person.name.split(' ')[0]} approves your inquiry.</Text>
     {person.demo ? <Text style={[note, { marginTop: 16 }]}>This profile is not accepting inquiries yet.</Text> : <>
       <Text style={label}>What do you need?</Text><Field value={value.title} onChangeText={title => setValue({ ...value, title })} placeholder="e.g. Photos for a family celebration" />
-      <Text style={label}>Requirements and details</Text><Field value={value.requirements} onChangeText={requirements => setValue({ ...value, requirements })} placeholder="Describe the work, location, schedule and what you expect to receive" multiline />
-      <Text style={label}>How can the work happen?</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{(['either', 'remote', 'in_person'] as const).map(mode => <Pressable key={mode} accessibilityRole="button" onPress={() => setValue({ ...value, work_mode: mode })} style={{ paddingHorizontal: 13, paddingVertical: 9, borderRadius: 13, backgroundColor: value.work_mode === mode ? color.purple : '#f0e8f8' }}><Text style={{ fontFamily: 'Nunito', fontWeight: '900', color: value.work_mode === mode ? '#fff' : color.purple }}>{mode === 'either' ? 'Either' : mode === 'remote' ? 'Remote' : 'In person'}</Text></Pressable>)}</View>
-      <Text style={label}>Preferred dates (optional)</Text><View style={{ flexDirection: 'row', gap: 8 }}><Field value={value.preferred_start || ''} onChangeText={preferred_start => setValue({ ...value, preferred_start })} placeholder="Start YYYY-MM-DD" style={{ flex: 1 }} /><Field value={value.preferred_end || ''} onChangeText={preferred_end => setValue({ ...value, preferred_end })} placeholder="End YYYY-MM-DD" style={{ flex: 1 }} /></View>
-      <Text style={label}>Budget or other notes (optional)</Text><Field value={value.budget_note || ''} onChangeText={budget_note => setValue({ ...value, budget_note })} placeholder="Budget range, timing flexibility, or other context" />
-      <Text style={label}>Reference images (optional)</Text><Button outline onPress={pick} style={{ alignSelf: 'flex-start' }}>+ Add images ({files.length}/5)</Button>{files.map((file, index) => <Pressable key={`${file.name}-${index}`} onPress={() => setFiles(files.filter((_, i) => i !== index))}><Text style={[note, { marginTop: 5 }]}>{file.name} · remove ×</Text></Pressable>)}
+      <Text style={label}>Requirements and details</Text><RichDescriptionEditor value={value.requirements} onChange={requirements => setValue({ ...value, requirements })} maxLength={4000} accessibilityLabel="Requirements and details" placeholder="Describe the work, location, schedule and what you expect to receive" />
+      <Text style={label}>How can the work happen?</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{(['either', 'remote', 'in_person'] as const).map(mode => <Pressable key={mode} accessibilityRole="button" onPress={() => setValue({ ...value, work_mode: mode })} style={{ paddingHorizontal: 13, paddingVertical: 9, borderRadius: 13, backgroundColor: value.work_mode === mode ? color.purple : '#f0e8f8' }}><Text style={{ fontFamily: 'Nunito', fontWeight: '900', color: value.work_mode === mode ? '#fff' : color.purple }}>{workModeLabel(mode)}</Text></Pressable>)}</View>
+      <Text style={label}>Preferred dates (optional)</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}><DateField label="Preferred start date" value={value.preferred_start || ''} onChange={preferred_start => setValue({ ...value, preferred_start, preferred_end: value.preferred_end && value.preferred_end < preferred_start ? '' : value.preferred_end })} /><DateField label="Expected deadline" value={value.preferred_end || ''} minimum={value.preferred_start} onChange={preferred_end => setValue({ ...value, preferred_end })} /></View>
+      <Text style={label}>Estimated budget (optional)</Text><Field value={value.budget_note || ''} onChangeText={budget_note => setValue({ ...value, budget_note })} placeholder="e.g. ₹5,000–₹10,000" />
+      <Text style={label}>Reference images (optional)</Text><Button outline onPress={pick} style={{ alignSelf: 'flex-start' }}>+ Add images ({files.length}/5)</Button><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 10 }}>{files.map((file, index) => <View key={`${file.name}-${index}`} style={{ width: 108, padding: 6, borderRadius: 12, borderWidth: 1, borderColor: color.line, backgroundColor: '#fff' }}>{previews[index] && <Image source={{ uri: previews[index] }} resizeMode="cover" style={{ width: 94, height: 74, borderRadius: 8 }} />}<Text numberOfLines={1} style={[note, { marginTop: 4 }]}>{file.name}</Text><Pressable accessibilityRole="button" accessibilityLabel={`Remove ${file.name}`} onPress={() => setFiles(files.filter((_, i) => i !== index))}><Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 12, fontWeight: '900' }}>Remove ×</Text></Pressable></View>)}</View>
       {!!error && <Text style={[note, { color: color.coral, marginTop: 10 }]}>{error}</Text>}
       <View style={{ flexDirection: 'row', gap: 9, marginTop: 21 }}><Button onPress={send} disabled={busy}>Send inquiry</Button><Button outline onPress={onClose}>Cancel</Button></View>
     </>}
@@ -46,9 +55,9 @@ function InquiryCard({ item, ownId, onRefresh, onChat }: { item: Inquiry; ownId:
   const openAttachment = async (path: string) => { try { await Linking.openURL(await referenceUrl(path)); } catch (cause) { setError((cause as Error).message); } };
   return <View style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, borderRadius: 20, padding: 19, marginTop: 12 }}>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}><TinyTag style={{ alignSelf: 'flex-start' }}>{item.status.toUpperCase()}</TinyTag><Text style={note}>{new Date(item.created_at).toLocaleDateString()}</Text></View>
-    <Heading size={20} style={{ marginTop: 10 }}>{item.title}</Heading><Text style={[note, { marginTop: 4 }]}>{received ? `From ${item.finder_name} · ${item.finder_taluka}` : `To ${item.freelancer_name}`} · {item.work_mode.replace('_', ' ')}</Text>
-    <Text style={{ fontFamily: 'Nunito', color: color.ink, marginTop: 12, lineHeight: 21 }}>{item.requirements}</Text>
-    {(item.preferred_start || item.budget_note) && <Text style={[note, { marginTop: 10 }]}>{[item.preferred_start && `Dates: ${item.preferred_start}${item.preferred_end ? ` to ${item.preferred_end}` : ''}`, item.budget_note && `Budget/notes: ${item.budget_note}`].filter(Boolean).join(' · ')}</Text>}
+    <Heading size={20} style={{ marginTop: 10 }}>{item.title}</Heading><Text style={[note, { marginTop: 4 }]}>{received ? `From ${item.finder_name} · ${item.finder_taluka}` : `To ${item.freelancer_name}`} · {workModeLabel(item.work_mode)}</Text>
+    <View style={{ marginTop: 12 }}><DescriptionPreview value={item.requirements} fontSize={14} /></View>
+    {(item.preferred_start || item.budget_note) && <Text style={[note, { marginTop: 10 }]}>{[item.preferred_start && `Dates: ${item.preferred_start}${item.preferred_end ? ` to ${item.preferred_end}` : ''}`, item.budget_note && `Estimated budget: ${item.budget_note}`].filter(Boolean).join(' · ')}</Text>}
     {!!attachments.length && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>{attachments.map(file => <Pressable key={file.id} accessibilityRole="button" onPress={() => openAttachment(file.storage_path)} style={{ padding: 9, backgroundColor: '#f5efff', borderRadius: 10 }}><Text style={{ fontFamily: 'Nunito', color: color.purple, fontWeight: '900' }}>🖼 {file.file_name} ↗</Text></Pressable>)}</View>}
     {received && item.status === 'pending' && <Pressable accessibilityRole="button" onPress={refreshAttachments} style={{ marginTop: 9 }}><Text style={{ fontFamily: 'Nunito', color: color.purple, fontWeight: '900', fontSize: 12 }}>Refresh reference images</Text></Pressable>}
     {!!item.response_note && <Text style={[note, { marginTop: 12 }]}>Freelancer response: {item.response_note}</Text>}

@@ -15,6 +15,7 @@ describe('project inquiry validation', () => {
   test('rejects malformed dates', () => expect(check({ preferred_start: '03/12/2026' })).toMatch(/start date/));
   test('rejects impossible calendar dates', () => expect(check({ preferred_start: '2026-02-30' })).toMatch(/start date/));
   test('rejects end before start', () => expect(check({ preferred_start: '2026-12-07', preferred_end: '2026-12-03' })).toMatch(/end date/));
+  test('allows a same-day deadline', () => expect(check({ preferred_start: '2026-12-07', preferred_end: '2026-12-07' })).toBeNull());
   test('allows five references', () => expect(check({}, Array(5).fill(image))).toBeNull());
   test('rejects six references', () => expect(check({}, Array(6).fill(image))).toMatch(/five/));
   test('rejects HTML masquerading as an image', () => expect(check({}, [{ type: 'text/html', size: 1024 }])).toMatch(/JPEG/));

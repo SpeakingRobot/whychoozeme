@@ -39,7 +39,7 @@ const labelStyle = { color: color.ink, fontFamily: font, fontSize: 13, fontWeigh
 export default function AuthPage({ mode, compact, signedIn, name, email, code, codeSentTo, taluka, accountKind, busy, error, message, guestLimit, onName, onEmail, onCode, onTaluka, onAccountKind, onMode, onSubmit, onResend, onChangeEmail, onBack }: Props) {
   const joining = mode === 'join';
   const heading = codeSentTo ? 'Check your email.' : joining ? 'Make room for your next opportunity.' : 'Good to see you again.';
-  const description = codeSentTo ? `Enter the 8-digit verification code sent to ${codeSentTo}.` : guestLimit ? 'Sign in to keep exploring local talent and send inquiries.' : joining ? 'Join the local community finding and sharing great work. No password needed.' : 'Sign in with a one-time email code. No password needed.';
+  const description = codeSentTo ? `Enter the 8-digit verification code sent to ${codeSentTo}.` : guestLimit ? 'Sign in to keep exploring local talent and message freelancers.' : joining ? 'Join the local community finding and sharing great work. No password needed.' : 'Sign in with a one-time email code. No password needed.';
 
   return <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1, backgroundColor: '#fffaf4' }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: compact ? 16 : 30, paddingVertical: compact ? 16 : 28 }}>
     <View style={{ width: '100%', maxWidth: 1320, alignSelf: 'center', flex: 1 }}>
