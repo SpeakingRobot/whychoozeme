@@ -8,6 +8,7 @@ import { normalizeLinks, normalizeSoftware, PortfolioLink, SoftwareSkill } from 
 import { DESCRIPTION_LIMIT } from './descriptionFormatting';
 import { confirmEmailOtp, requestEmailOtp } from './emailOtp';
 import { whatsappUrl } from './whatsapp';
+import { summarizeChatInbox, type ChatInboxEntry, type InboxMessageRow } from './chatInbox';
 
 export const db: SupabaseClient | null = liveEnabled ? createClient(supabaseUrl, supabasePublishableKey, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: Platform.OS === 'web', ...(Platform.OS === 'web' ? {} : { storage: AsyncStorage }) },
@@ -145,6 +146,30 @@ export async function getChatPartners(userId: string): Promise<{ id: string; fin
   const rows = unwrap(await assertDb().rpc('my_chat_partners')) || [];
   return rows.map((row: any) => ({ id: row.finder_id === userId ? row.freelancer_id : row.finder_id,
     finderId: row.finder_id, freelancerId: row.freelancer_id, finderName: row.finder_name }));
+}
+export async function getChatInbox(userId: string): Promise<Record<string, ChatInboxEntry>> {
+  const client = assertDb();
+  const recentResult = await client.from('chat_messages')
+    .select('id,finder_id,freelancer_id,body,created_at')
+    .or(`finder_id.eq.${userId},freelancer_id.eq.${userId}`)
+    .order('created_at', { ascending: false }).limit(300);
+  const recent = unwrap(recentResult) as InboxMessageRow[];
+  const unreadIds: string[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const batch = unwrap(await client.from('notifications').select('related_id')
+      .eq('user_id', userId).eq('kind', 'message').is('seen_at', null)
+      .order('created_at', { ascending: true }).range(offset, offset + 999)) as { related_id: string | null }[];
+    unreadIds.push(...batch.map(row => row.related_id).filter((id): id is string => !!id));
+    if (batch.length < 1000) break;
+  }
+  const messages = new Map(recent.map(row => [row.id, row]));
+  for (let offset = 0; offset < unreadIds.length; offset += 100) {
+    const batch = unwrap(await client.from('chat_messages')
+      .select('id,finder_id,freelancer_id,body,created_at')
+      .in('id', unreadIds.slice(offset, offset + 100))) as InboxMessageRow[];
+    batch.forEach(row => messages.set(row.id, row));
+  }
+  return summarizeChatInbox(userId, [...messages.values()], new Set(unreadIds));
 }
 export async function createMessage(finderId: string, freelancerId: string, senderId: string, body: string) {
   unwrap(await assertDb().from('chat_messages').insert({ finder_id: finderId, freelancer_id: freelancerId, sender_id: senderId, body }));
