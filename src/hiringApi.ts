@@ -4,7 +4,7 @@ import { ProposalTerms } from './hiring';
 function client() { if (!db) throw new Error('Open the live app and sign in to use hiring.'); return db; }
 function value<T>(result: { data: T; error: { message: string } | null }): T { if (result.error) throw new Error(result.error.message); return result.data; }
 
-export type ServiceRow = { id: string; freelancer_id: string; title: string; description: string; category_slug: string; availability_mode: string; deliverables: string[]; location: string; turnaround_days: number | null; active: boolean };
+export type ServiceRow = { id: string; freelancer_id: string; title: string; description: string; category_slug: string; availability_mode: string; deliverables: string[]; location: string; turnaround_days: number | null; active: boolean; sort_order: number };
 export type PricingRow = { id: string; service_id: string; model: string; label: string; currency: string; rate_minor: number | null; terms: Record<string, unknown> };
 export type HiringRow = { id: string; finder_id: string; freelancer_id: string; service_id: string | null; status: string; accepted_proposal_id: string | null; created_at: string };
 export type ProposalRow = { id: string; request_id: string; version: number; sender_id: string; recipient_id: string; terms: ProposalTerms; status: string; created_at: string };
@@ -12,14 +12,19 @@ export type AgreementRow = { id: string; request_id: string; proposal_id: string
 export type DocumentRow = { id: string; agreement_id: string; version: number; body: string; sha256: string; pdf_path: string | null; terms_snapshot: ProposalTerms };
 
 export async function servicesFor(freelancerId: string) {
-  const services = value(await client().from('service_listings').select('*').eq('freelancer_id', freelancerId).order('created_at', { ascending: false })) as ServiceRow[];
+  const services = value(await client().from('service_listings').select('*').eq('freelancer_id', freelancerId).order('sort_order', { ascending: true }).order('created_at', { ascending: false })) as ServiceRow[];
   const prices = services.length ? value(await client().from('service_pricing').select('*').in('service_id', services.map(s => s.id))) as PricingRow[] : [];
   return { services, prices };
 }
-export async function saveService(input: Pick<ServiceRow,'title'|'description'|'category_slug'|'availability_mode'|'deliverables'|'location'> & { freelancer_id: string; id?: string; turnaround_days?: number | null }) {
+export async function saveService(input: Pick<ServiceRow,'title'|'description'|'category_slug'|'availability_mode'|'deliverables'|'location'> & { freelancer_id: string; id?: string; turnaround_days?: number | null; sort_order?: number }) {
   const row = value(await client().from('service_listings').upsert(input).select('id').single());
   if (!row) throw new Error('Service was not saved.');
   return row.id as string;
+}
+export async function reorderServices(freelancerId: string, ids: string[]) {
+  for (const [sortOrder, id] of ids.entries()) {
+    value(await client().from('service_listings').update({ sort_order: sortOrder }).eq('id', id).eq('freelancer_id', freelancerId));
+  }
 }
 export async function savePrice(input: { service_id: string; model: string; label: string; currency: string; rate_minor: number | null; terms?: Record<string, unknown> }) {
   value(await client().from('service_pricing').upsert(input, { onConflict: 'service_id,model,label' }));

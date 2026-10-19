@@ -28,7 +28,7 @@ export default function PaymentTermsPanel({ services, prices, isOwner, canNegoti
   onChoose: (service: ServiceRow, option: PricingRow) => void;
   renderOwnerActions: (service: ServiceRow) => React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(isOwner);
   const active = services.filter(service => service.active || isOwner);
   if (!active.length) return null;
   const locations = [...new Set(active.map(service => placeLabel[service.location] || service.location))];

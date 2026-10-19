@@ -88,13 +88,18 @@ export async function saveFreelancer(userId: string, person: Freelancer) {
 export async function savePortfolioLinks(userId: string, links: PortfolioLink[]) {
   unwrap(await assertDb().from('freelancer_profiles').update({ portfolio_links: normalizeLinks(links) }).eq('user_id', userId));
 }
-export async function saveContact(userId: string, phone: string, whatsapp: string) {
+export async function saveContact(userId: string, phone: string, whatsapp: string, isPublic: boolean) {
   const auth = await account();
   unwrap(await assertDb().from('freelancer_contacts').upsert({ freelancer_id: userId, email: auth.user?.email || null,
-    phone: phone || null, whatsapp: whatsapp || null }));
+    phone: phone || null, whatsapp: whatsapp || null, is_public: isPublic }));
 }
 export async function getContact(userId: string) {
-  const result = await assertDb().from('freelancer_contacts').select('email,phone,whatsapp').eq('freelancer_id', userId).maybeSingle();
+  const result = await assertDb().from('freelancer_contacts').select('email,phone,whatsapp,is_public').eq('freelancer_id', userId).maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  return result.data;
+}
+export async function getPublicContact(userId: string) {
+  const result = await assertDb().from('freelancer_contacts').select('email,phone,whatsapp').eq('freelancer_id', userId).eq('is_public', true).maybeSingle();
   if (result.error) throw new Error(result.error.message);
   return result.data;
 }
