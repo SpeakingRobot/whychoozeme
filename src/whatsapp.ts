@@ -10,9 +10,9 @@ export function whatsappUrl(input: string): string | null {
   return phonePattern.test(digits) ? `https://wa.me/${digits}` : null;
 }
 
-export function publicWhatsapp(links: PortfolioLink[] | undefined): string | null {
+export function publicWhatsapp(links: PortfolioLink[] | undefined, publicContactUrl?: string): string | null {
   const link = links?.find(item => item.title.trim().toLowerCase() === 'whatsapp');
-  return link ? whatsappUrl(link.url) : null;
+  return (link && whatsappUrl(link.url)) || (publicContactUrl && whatsappUrl(publicContactUrl)) || null;
 }
 
 export function withoutWhatsapp(links: PortfolioLink[] | undefined): PortfolioLink[] {

@@ -26,7 +26,7 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
   const portraitSize = isPhone ? 170 : isTablet ? 184 : screenWidth >= 1500 ? 320 : 256;
   const text = { fontFamily: 'Nunito' as const, color: color.ink };
   const [showAllSoftware, setShowAllSoftware] = useState(false);
-  const whatsapp = publicWhatsapp(profile.links);
+  const whatsapp = publicWhatsapp(profile.links, profile.publicWhatsappUrl);
   const roleBadge = <View accessibilityLabel={`Skill: ${profile.role}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#fff1df', borderRadius: 22, paddingHorizontal: 14, paddingVertical: 8 }}>
     <Text style={{ color: '#bc7416', fontSize: 15 }}>✦</Text>
     <Text style={[text, { color: '#865018', fontSize: 14, fontWeight: '900' }]}>{profile.role}</Text>

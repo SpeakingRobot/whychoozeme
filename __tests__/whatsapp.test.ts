@@ -12,3 +12,10 @@ test('only a deliberately labelled WhatsApp link appears as contact', () => {
   expect(publicWhatsapp(links)).toBe('https://wa.me/919876543210');
   expect(withoutWhatsapp(links)).toEqual([links[0]]);
 });
+
+test('uses only a published contact fallback when no WhatsApp portfolio link exists', () => {
+  const links = [{ title: 'Portfolio', url: 'https://example.com' }];
+  expect(publicWhatsapp(links)).toBeNull();
+  expect(publicWhatsapp(links, '+91 98765 43210')).toBe('https://wa.me/919876543210');
+  expect(publicWhatsapp(links, 'https://example.com/not-whatsapp')).toBeNull();
+});

@@ -39,6 +39,7 @@ export type Freelancer = {
   description?: string;
   software?: import('./software').SoftwareSkill[];
   links?: import('./software').PortfolioLink[];
+  publicWhatsappUrl?: string;
   work: string[];
   image: number;
   imageUrl?: string;

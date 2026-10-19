@@ -7,6 +7,7 @@ import { liveEnabled, supabasePublishableKey, supabaseUrl } from './supabaseConf
 import { normalizeLinks, normalizeSoftware, PortfolioLink, SoftwareSkill } from './software';
 import { DESCRIPTION_LIMIT } from './descriptionFormatting';
 import { confirmEmailOtp, requestEmailOtp } from './emailOtp';
+import { whatsappUrl } from './whatsapp';
 
 export const db: SupabaseClient | null = liveEnabled ? createClient(supabaseUrl, supabasePublishableKey, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: Platform.OS === 'web', ...(Platform.OS === 'web' ? {} : { storage: AsyncStorage }) },
@@ -35,13 +36,14 @@ export async function getFinder(userId: string) {
 }
 export async function getFreelancers(): Promise<Freelancer[]> {
   const client = assertDb();
-  const [profileResult, sampleResult, premiumResult, presenceResult, responseResult, reviewResult] = await Promise.all([
+  const [profileResult, sampleResult, premiumResult, presenceResult, responseResult, reviewResult, contactResult] = await Promise.all([
     client.from('freelancer_profiles').select('user_id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,description,software_skills,portfolio_links,portfolio,image_url,created_at').order('created_at', { ascending: false }),
     client.from('sample_freelancers').select('id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,card_line,image_index,rating,review_count,sort_order').order('sort_order', { ascending: true }),
     client.from('user_entitlements').select('user_id').eq('premium', true),
     client.from('freelancer_presence').select('freelancer_id,last_active_at'),
     client.rpc('freelancer_response_stats'),
     client.rpc('freelancer_review_summary'),
+    client.from('freelancer_contacts').select('freelancer_id,whatsapp').eq('is_public', true),
   ]);
   const rows = unwrap(profileResult), samples = unwrap(sampleResult);
   const premiumUsers = new Set((unwrap(premiumResult) || []).map((row: any) => row.user_id));
@@ -49,6 +51,7 @@ export async function getFreelancers(): Promise<Freelancer[]> {
   const activity = new Map((presenceResult.data || []).map((row: any) => [row.freelancer_id, row.last_active_at]));
   const responses = new Map<string, { median_response_minutes: number; response_count: number }>((responseResult.data || []).map((row: any) => [row.freelancer_id, row]));
   const reviews = new Map<string, { review_count: number; average_rating: number }>((reviewResult.data || []).map((row: any) => [row.freelancer_id, row]));
+  const publicContacts = new Map<string, string>((contactResult.data || []).map((row: any) => [row.freelancer_id, row.whatsapp]));
   // Sample-only states disappear with the sample rows; real accounts always use tracked activity.
   const sampleActivityMinutes = [0, 18, 145, 46, 0, 1440, 35, 8];
   const sampleResponseMinutes = [6, 28, 12, 52, 9, 120, 14, 38];
@@ -64,7 +67,7 @@ export async function getFreelancers(): Promise<Freelancer[]> {
   const realPeople = (rows || []).map((row: any) => ({ id: row.user_id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality || row.taluka,
     lat: row.latitude, lon: row.longitude, rating: Number(reviews.get(row.user_id)?.average_rating || 0), reviews: reviews.get(row.user_id)?.review_count || 0, distance: 'Nearby',
-    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', description: row.description || '', software: normalizeSoftware(row.software_skills), links: normalizeLinks(row.portfolio_links), work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id), lastActiveAt: activity.get(row.user_id),
+    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', description: row.description || '', software: normalizeSoftware(row.software_skills), links: normalizeLinks(row.portfolio_links), publicWhatsappUrl: whatsappUrl(publicContacts.get(row.user_id) || '') || undefined, work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id), lastActiveAt: activity.get(row.user_id),
     responseMinutes: responses.get(row.user_id)?.median_response_minutes, responseSamples: responses.get(row.user_id)?.response_count }));
   const samplePeople = (samples || []).map((row: any) => ({ id: row.id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality,
