@@ -52,7 +52,7 @@ export type Freelancer = {
 
 export type Finder = { name: string; email: string; taluka: Taluka };
 export type RequestPost = { id: string; title: string; category: string; details: string; taluka: Taluka; createdAt: number; finder: string; finderId?: string };
-export type ChatMessage = { id: string; freelancerId: string; body: string; from: 'finder' | 'freelancer'; time: number };
+export type ChatMessage = { id: string; freelancerId: string; body: string; from: 'finder' | 'freelancer'; time: number; attachment?: import('./liveApi').ChatAttachment };
 
 export function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
   const toRad = (value: number) => value * Math.PI / 180;

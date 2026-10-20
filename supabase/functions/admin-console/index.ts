@@ -18,13 +18,19 @@ async function removeUserFiles(server: any, userId: string) {
     if (files.length) unwrap(await server.storage.from(bucket).remove(files));
     if (data.length === 100) await removeFolder(bucket, prefix);
   };
-  for (const bucket of ['portfolio-public', 'inquiry-private', 'agreement-private']) await removeFolder(bucket, userId);
+  for (const bucket of ['portfolio-public', 'inquiry-private', 'agreement-private', 'chat-private']) await removeFolder(bucket, userId);
 }
 
 async function deleteTestUser(server: any, userId: string) {
   const hiring = unwrap(await server.from('hiring_requests').select('id').or(`finder_id.eq.${userId},freelancer_id.eq.${userId}`).limit(1));
   if (hiring.length) throw new Error('This account has hiring or agreement history and cannot be deleted from the test-account tool.');
   // Storage objects must be removed through Storage, not deleted from storage.objects with SQL.
+  const conversations = unwrap(await server.from('chat_messages').select('id').or(`finder_id.eq.${userId},freelancer_id.eq.${userId}`));
+  for (let offset = 0; offset < conversations.length; offset += 100) {
+    const attachments = unwrap(await server.from('chat_attachments').select('storage_path').in('message_id', conversations.slice(offset, offset + 100).map((row: any) => row.id)));
+    const paths = attachments.map((row: any) => row.storage_path);
+    if (paths.length) unwrap(await server.storage.from('chat-private').remove(paths));
+  }
   await removeUserFiles(server, userId);
   unwrap(await server.from('inquiry_attachments').delete().eq('uploaded_by', userId));
   unwrap(await server.from('signature_assets').delete().eq('user_id', userId));

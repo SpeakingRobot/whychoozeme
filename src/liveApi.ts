@@ -174,6 +174,62 @@ export async function getChatInbox(userId: string): Promise<Record<string, ChatI
 export async function createMessage(finderId: string, freelancerId: string, senderId: string, body: string) {
   unwrap(await assertDb().from('chat_messages').insert({ finder_id: finderId, freelancer_id: freelancerId, sender_id: senderId, body }));
 }
+export type ChatAttachment = { fileName: string; mimeType: string; sizeBytes: number; url: string };
+export async function getChatAttachments(messageIds: string[]): Promise<Record<string, ChatAttachment>> {
+  if (!messageIds.length) return {};
+  const client = assertDb();
+  const rows: { message_id: string; storage_path: string; file_name: string; mime_type: string; size_bytes: number }[] = [];
+  for (let offset = 0; offset < messageIds.length; offset += 100) {
+    rows.push(...(unwrap(await client.from('chat_attachments')
+      .select('message_id,storage_path,file_name,mime_type,size_bytes')
+      .in('message_id', messageIds.slice(offset, offset + 100))) || []));
+  }
+  const entries = await Promise.all(rows.map(async row => {
+    const result = await client.storage.from('chat-private').createSignedUrl(row.storage_path, 3600);
+    if (result.error || !result.data) return null;
+    return [row.message_id, { fileName: row.file_name, mimeType: row.mime_type, sizeBytes: row.size_bytes, url: result.data.signedUrl }] as const;
+  }));
+  return Object.fromEntries(entries.filter((entry): entry is NonNullable<typeof entry> => !!entry));
+}
+export const chatFileTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+export function chatFileError(file: { type: string; size: number; name: string }): string | null {
+  if (!chatFileTypes.includes(file.type)) return 'Attach a PDF, JPEG, PNG or WebP file.';
+  if (!file.size || file.size > 10 * 1024 * 1024) return 'Keep chat files under 10 MB.';
+  if (!file.name.trim()) return 'Choose a named file.';
+  return null;
+}
+export async function sendChatAttachment(finderId: string, freelancerId: string, senderId: string, file: File): Promise<void> {
+  const problem = chatFileError(file);
+  if (problem) throw new Error(problem);
+  const client = assertDb();
+  const path = `${senderId}/${crypto.randomUUID()}`;
+  const uploaded = await client.storage.from('chat-private').upload(path, file, { contentType: file.type, upsert: false });
+  if (uploaded.error) throw new Error(uploaded.error.message);
+  try {
+    unwrap(await client.rpc('send_chat_attachment', {
+      p_finder: finderId, p_freelancer: freelancerId, p_path: path,
+      p_file_name: file.name.slice(0, 180), p_mime: file.type, p_size: file.size,
+    }));
+  } catch (error) {
+    await client.storage.from('chat-private').remove([path]);
+    throw error;
+  }
+}
+export async function getSavedProfiles(): Promise<string[]> {
+  return (unwrap(await assertDb().from('profile_saves').select('freelancer_id')) || []).map((row: any) => row.freelancer_id);
+}
+export async function setProfileSaved(finderId: string, freelancerId: string, saved: boolean): Promise<void> {
+  const client = assertDb();
+  if (saved) unwrap(await client.from('profile_saves').insert({ freelancer_id: freelancerId, finder_id: finderId }));
+  else unwrap(await client.from('profile_saves').delete().eq('finder_id', finderId).eq('freelancer_id', freelancerId));
+}
+export async function recordProfileView(freelancerId: string): Promise<void> {
+  unwrap(await assertDb().rpc('record_profile_view', { p_freelancer: freelancerId }));
+}
+export async function getMyProfileStats(): Promise<{ profileViews: number; saves: number }> {
+  const rows = unwrap(await assertDb().rpc('my_profile_stats')) || [];
+  return { profileViews: Number(rows[0]?.profile_views || 0), saves: Number(rows[0]?.saves || 0) };
+}
 export type FreelancerReview = { finder_id: string; freelancer_id: string; rating: number; body: string; created_at: string };
 export async function getFreelancerReviews(freelancerId: string): Promise<FreelancerReview[]> {
   return unwrap(await assertDb().from('freelancer_reviews').select('finder_id,freelancer_id,rating,body,created_at')
@@ -189,7 +245,15 @@ export async function canReviewFreelancer(finderId: string, freelancerId: string
   return !!result.data?.length;
 }
 export async function getNotifications() {
-  return unwrap(await assertDb().from('notifications').select('id,kind,title,created_at,seen_at,related_id').order('created_at', { ascending: false }).limit(30)) || [];
+  return unwrap(await assertDb().from('notifications').select('id,kind,title,created_at,seen_at,related_id').neq('kind', 'message').order('created_at', { ascending: false }).limit(50)) || [];
+}
+export async function getUnreadNotificationCount(): Promise<number> {
+  const result = await assertDb().from('notifications').select('id', { count: 'exact', head: true }).neq('kind', 'message').is('seen_at', null);
+  if (result.error) throw new Error(result.error.message);
+  return result.count || 0;
+}
+export async function markNotificationsRead(): Promise<void> {
+  unwrap(await assertDb().from('notifications').update({ seen_at: new Date().toISOString() }).neq('kind', 'message').is('seen_at', null));
 }
 export async function getUnreadMessageCount(): Promise<number> {
   const { count, error } = await assertDb().from('notifications').select('id', { count: 'exact', head: true }).eq('kind', 'message').is('seen_at', null);
@@ -200,6 +264,11 @@ export async function markConversationRead(messageIds: string[]) {
   if (!messageIds.length) return;
   const { error } = await assertDb().from('notifications').update({ seen_at: new Date().toISOString() }).eq('kind', 'message').is('seen_at', null).in('related_id', messageIds);
   if (error) throw new Error(error.message);
+}
+export async function markChatRead(finderId: string, freelancerId: string, incomingMessageIds: string[]): Promise<void> {
+  const result = await assertDb().rpc('mark_chat_read', { p_finder: finderId, p_freelancer: freelancerId });
+  if (result.error?.code === 'PGRST202') return markConversationRead(incomingMessageIds);
+  if (result.error) throw new Error(result.error.message);
 }
 export async function isAdmin(userId: string) {
   const result = await assertDb().from('admins').select('user_id').eq('user_id', userId).maybeSingle();
