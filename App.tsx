@@ -275,7 +275,22 @@ export default function App() {
   }, [setFinder, setOwnProfile, setRequests]);
   const refreshChatPairs = useCallback(async () => { if (!userId) return; try { setChatPairs(await live.getChatPartners(userId)); } catch (error) { setNotice((error as Error).message); } }, [userId]);
   const refreshChatInbox = useCallback(async () => { if (!userId) return; const generation = ++chatInboxGeneration.current; try { const inbox = await live.getChatInbox(userId); if (generation === chatInboxGeneration.current) { setChatInbox(inbox); setUnreadChats(Object.values(inbox).reduce((total, entry) => total + entry.unread, 0)); } } catch (error) { setNotice((error as Error).message); } }, [userId]);
-  const loadChat = useCallback(async (person: Freelancer) => { if (!userId || !chatRoute) return; const generation = ++chatLoadGeneration.current; try { const rows = await live.getMessages(chatRoute.finderId, chatRoute.freelancerId); if (generation !== chatLoadGeneration.current) return; setMessages(rows.map((row: any) => ({ id: row.id, freelancerId: person.id, body: row.body, from: row.sender_id === chatRoute.finderId ? 'finder' : 'freelancer', time: new Date(row.created_at).getTime() }))); await live.markChatRead(chatRoute.finderId, chatRoute.freelancerId, rows.filter((row: any) => row.sender_id !== userId).map((row: any) => row.id)); await refreshChatInbox(); const attachments = await live.getChatAttachments(rows.map((row: any) => row.id)); if (generation === chatLoadGeneration.current) setMessages(rows.map((row: any) => ({ id: row.id, freelancerId: person.id, body: row.body, from: row.sender_id === chatRoute.finderId ? 'finder' : 'freelancer', time: new Date(row.created_at).getTime(), attachment: attachments[row.id] }))); } catch (error) { setNotice((error as Error).message); } }, [userId, chatRoute, refreshChatInbox]);
+  const loadChat = useCallback(async (person: Freelancer) => {
+    if (!userId || !chatRoute) return;
+    const generation = ++chatLoadGeneration.current;
+    try {
+      const rows = await live.getMessages(chatRoute.finderId, chatRoute.freelancerId);
+      if (generation !== chatLoadGeneration.current) return;
+      const displayRows = rows.map((row: any) => ({ id: row.id, freelancerId: person.id, body: row.body, from: row.sender_id === chatRoute.finderId ? 'finder' as const : 'freelancer' as const, time: new Date(row.created_at).getTime() }));
+      setMessages(displayRows);
+      try {
+        await live.markChatRead(chatRoute.finderId, chatRoute.freelancerId, rows.filter((row: any) => row.sender_id !== userId).map((row: any) => row.id));
+        await refreshChatInbox();
+      } catch (error) { setNotice(`Could not mark chat as read: ${(error as Error).message}`); }
+      const attachments = await live.getChatAttachments(rows.map((row: any) => row.id));
+      if (generation === chatLoadGeneration.current) setMessages(displayRows.map(row => ({ ...row, attachment: attachments[row.id] })));
+    } catch (error) { setNotice((error as Error).message); }
+  }, [userId, chatRoute, refreshChatInbox]);
   useEffect(() => { let active = true; live.account().then(({ user }) => { if (active) setUserId(user?.email_confirmed_at ? user.id : null); }).catch(error => setNotice(error.message)).finally(() => { if (active) setAuthReady(true); }); refreshPeople(); live.getCategories().then(setCatalog).catch(error => setNotice(error.message)); const subscription = live.db?.auth.onAuthStateChange((_event, session) => { setUserId(session?.user?.email_confirmed_at ? session.user.id : null); }); return () => { active = false; subscription?.data.subscription.unsubscribe(); }; }, [refreshPeople]);
   useEffect(() => { if (!userId) { chatLoadGeneration.current += 1; setFinder(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setChatPairs([]); setRequests([]); setRemoteNotices([]); setUnreadNotices(0); setUnreadChats(0); setChatInbox({}); setAccountFavorites([]); setProfileStats({ profileViews: 0, saves: 0 }); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } refreshAccount(userId); }, [userId, refreshAccount]);
   useEffect(() => {
@@ -474,7 +489,14 @@ export default function App() {
   const postRequest = async () => { if (!finder || !userId) { setDialog('finder'); return; } if (requestTitle.trim().length < 4 || requestDetails.trim().length < 10) { setFormError('Add a title and a description of at least 10 characters.'); return; }
     try { await live.createRequest(userId, requestTitle.trim(), requestDetails.trim(), requestCategory, finder.taluka); setRequests(await live.getRequests(userId)); } catch (error) { setFormError((error as Error).message); return; }
     setRequestTitle(''); setRequestDetails(''); setDialog(null); setPage('myPosts'); setNotice('Requirement posted.'); };
-  const sendMessage = async () => { if (!userId || !chatPerson || !chatDraft.trim() || !chatRoute) return; try { await live.createMessage(chatRoute.finderId, chatRoute.freelancerId, userId, chatDraft.trim()); await loadChat(chatPerson); await refreshChatPairs(); setChatDraft(''); } catch (error) { setNotice((error as Error).message); } };
+  const sendMessage = async () => {
+    if (!userId || !chatPerson || !chatDraft.trim() || !chatRoute) return;
+    try { await live.createMessage(chatRoute.finderId, chatRoute.freelancerId, userId, chatDraft.trim()); }
+    catch (error) { setNotice(`Could not send message: ${(error as Error).message}`); return; }
+    setChatDraft('');
+    await loadChat(chatPerson);
+    await refreshChatPairs();
+  };
   const attachChatFile = () => {
     if (Platform.OS !== 'web' || !userId || !chatRoute || !chatPerson || chatFileBusy) return;
     const input = document.createElement('input');
