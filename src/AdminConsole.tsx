@@ -16,11 +16,13 @@ type AdminUser = {
 };
 type UserList = { users: AdminUser[]; page: number; hasMore: boolean };
 type UserDetail = {
-  services: { id: string; title: string; description: string; active: boolean }[];
-  media: { id: string; kind: string; file_name: string }[];
-  requests: { id: string; title: string; details: string; status: string }[];
-  flags: { id: string; reason: string; created_at: string }[];
+  services: { id: string; title: string; description: string; active: boolean; moderation_status: string }[];
+  media: { id: string; kind: string; file_name: string; moderation_status: string }[];
+  requests: { id: string; title: string; details: string; status: string; moderation_status: string }[];
+  flags: { id: string; reason: string; target_kind: string; target_id: string | null; target_title: string | null; status: string; created_at: string }[];
 };
+type FlagTarget = { kind: 'account' | 'service' | 'media' | 'request'; id?: string; title: string };
+const flagReasons = ['Spam or misleading content', 'Inappropriate or offensive content', 'Fraud or scam', 'Copyright violation', 'Harassment or abuse', 'Other'] as const;
 type Tab = 'all' | 'freelancers' | 'finders';
 type EditField = { key: string; label: string; multiline?: boolean };
 
@@ -84,7 +86,10 @@ export default function AdminConsole() {
   const [editKind, setEditKind] = useState<'freelancer' | 'finder'>('freelancer');
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [detail, setDetail] = useState<UserDetail | null>(null);
-  const [flagReason, setFlagReason] = useState('');
+  const [flagTarget, setFlagTarget] = useState<FlagTarget | null>(null);
+  const [flagReasonCode, setFlagReasonCode] = useState('');
+  const [flagNote, setFlagNote] = useState('');
+  const [flagConfirm, setFlagConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -146,7 +151,7 @@ export default function AdminConsole() {
     return () => { active = false; };
   }, [selectedId, authState, list]);
 
-  useEffect(() => { setFlagReason(''); setDeleteConfirm(''); setDeleteOpen(false); }, [selectedId]);
+  useEffect(() => { setFlagTarget(null); setFlagReasonCode(''); setFlagNote(''); setFlagConfirm(false); setDeleteConfirm(''); setDeleteOpen(false); }, [selectedId]);
 
   const chooseKind = (kind: 'freelancer' | 'finder') => {
     setEditKind(kind);
@@ -216,8 +221,14 @@ export default function AdminConsole() {
     void mutate({ action: 'removeContent', userId: selected.id, kind, itemId }, `${label} removed.`);
   };
   const flagSelected = async () => {
-    if (!selected) return;
-    if (await mutate({ action: 'flagUser', userId: selected.id, reason: flagReason.trim() }, 'Flag sent to the user.')) setFlagReason('');
+    if (!selected || !flagTarget || !flagReasonCode) return;
+    const reason = `${flagReasonCode === 'Other' ? 'Other concern' : flagReasonCode}${flagNote.trim() ? `: ${flagNote.trim()}` : ''}`;
+    const body = flagTarget.kind === 'account'
+      ? { action: 'flagUser', userId: selected.id, reason }
+      : { action: 'flagContent', userId: selected.id, kind: flagTarget.kind, itemId: flagTarget.id, reasonCode: flagReasonCode, note: flagNote.trim() };
+    if (await mutate(body, flagTarget.kind === 'account' ? 'Account flag recorded and the user notified.' : `${flagTarget.title} is under review. The owner was notified.`)) {
+      setFlagTarget(null); setFlagReasonCode(''); setFlagNote(''); setFlagConfirm(false);
+    }
   };
 
   return <div style={{ minHeight: '100vh', background: '#f8f6fc', color: ink, fontFamily: 'Nunito, sans-serif' }}>
@@ -264,16 +275,26 @@ export default function AdminConsole() {
             </div>
             <div style={{ borderTop: '1px solid #ece8f2', marginTop: 24, paddingTop: 20 }}><h3>What this account has listed</h3>
               {!detail && <p>Loading listings…</p>}
-              {detail && <><h4>Services ({detail.services.length})</h4>{detail.services.map(item => <div key={item.id} style={{ marginBottom: 14 }}><b>{item.title}</b> · {item.active ? 'Active' : 'Hidden'}<p style={{ margin: '4px 0' }}>{item.description}</p><button disabled={busy} style={buttonStyle(true)} onClick={() => removeListing('service', item.id, item.title)}>Remove service</button></div>)}
-                <h4>Portfolio media ({detail.media.length})</h4>{detail.media.map(item => <div key={item.id} style={{ marginBottom: 10 }}>{item.kind}: {item.file_name} <button disabled={busy} style={buttonStyle(true)} onClick={() => removeListing('media', item.id, item.file_name)}>Remove media</button></div>)}
-                <h4>Finder requests ({detail.requests.length})</h4>{detail.requests.map(item => <div key={item.id} style={{ marginBottom: 14 }}><b>{item.title}</b> · {item.status}<p style={{ margin: '4px 0' }}>{item.details}</p><button disabled={busy} style={buttonStyle(true)} onClick={() => removeListing('request', item.id, item.title)}>Remove request</button></div>)}
+              {detail && <><h4>Services ({detail.services.length})</h4>{detail.services.map(item => <div key={item.id} style={{ marginBottom: 14 }}><b>{item.title}</b> · {item.moderation_status === 'under_review' ? 'Under review' : item.active ? 'Active' : 'Hidden'}<p style={{ margin: '4px 0' }}>{item.description}</p><div style={{ display: 'flex', gap: 8 }}><button disabled={busy} style={buttonStyle(true)} onClick={() => { setFlagTarget({ kind: 'service', id: item.id, title: item.title }); setFlagReasonCode(''); setFlagNote(''); setFlagConfirm(false); }}>Flag service</button><button disabled={busy} style={buttonStyle(true)} onClick={() => removeListing('service', item.id, item.title)}>Remove service</button></div></div>)}
+                <h4>Portfolio media ({detail.media.length})</h4>{detail.media.map(item => <div key={item.id} style={{ marginBottom: 10 }}>{item.kind}: {item.file_name} {item.moderation_status === 'under_review' && <b style={{ color: '#b72542' }}>· Under review</b>} <button disabled={busy} style={buttonStyle(true)} onClick={() => { setFlagTarget({ kind: 'media', id: item.id, title: item.file_name }); setFlagReasonCode(''); setFlagNote(''); setFlagConfirm(false); }}>Flag item</button> <button disabled={busy} style={buttonStyle(true)} onClick={() => removeListing('media', item.id, item.file_name)}>Remove media</button></div>)}
+                <h4>Finder requests ({detail.requests.length})</h4>{detail.requests.map(item => <div key={item.id} style={{ marginBottom: 14 }}><b>{item.title}</b> · {item.moderation_status === 'under_review' ? 'Under review' : item.status}<p style={{ margin: '4px 0' }}>{item.details}</p><div style={{ display: 'flex', gap: 8 }}><button disabled={busy} style={buttonStyle(true)} onClick={() => { setFlagTarget({ kind: 'request', id: item.id, title: item.title }); setFlagReasonCode(''); setFlagNote(''); setFlagConfirm(false); }}>Flag requirement</button><button disabled={busy} style={buttonStyle(true)} onClick={() => removeListing('request', item.id, item.title)}>Remove request</button></div></div>)}
                 {!detail.services.length && !detail.media.length && !detail.requests.length && <p style={{ color: '#77748c' }}>No listings yet.</p>}
-                <h4>Previous flags ({detail.flags.length})</h4>{detail.flags.map(item => <p key={item.id}>{item.reason} · {new Date(item.created_at).toLocaleString()}</p>)}
+                <h4>Moderation history ({detail.flags.length})</h4>{detail.flags.map(item => <div key={item.id} style={{ padding: 11, border: '1px solid #eee6f3', borderRadius: 10, marginBottom: 7 }}><b>{item.target_kind === 'account' ? 'Account' : `${item.target_kind}: ${item.target_title || item.target_id}`}</b> · {item.reason} · {item.status} · {new Date(item.created_at).toLocaleString()}{item.status === 'under_review' && <div style={{ marginTop: 8 }}><button disabled={busy} style={buttonStyle(true)} onClick={() => { if (window.confirm(`Dismiss this flag${item.target_kind !== 'account' ? ' and restore the listing when no other flags remain' : ''}?`)) void mutate({ action: 'resolveFlag', userId: selected.id, flagId: item.id }, 'Flag resolved.'); }}>Dismiss flag{item.target_kind !== 'account' ? ' / restore listing' : ''}</button></div>}</div>)}
               </>}
             </div>
-            <div style={{ borderTop: '1px solid #ece8f2', marginTop: 24, paddingTop: 20 }}><h3>Flag inappropriate content</h3><p style={{ color: '#77748c' }}>The user receives an in-app notification with this reason.</p>
-              <textarea aria-label="Reason for flag" value={flagReason} onChange={event => setFlagReason(event.target.value)} maxLength={500} placeholder="Describe the specific listing or behavior (10–500 characters)" style={{ ...inputStyle, minHeight: 90 }} />
-              <button disabled={busy || flagReason.trim().length < 10} style={{ ...buttonStyle(true), marginTop: 10 }} onClick={() => void flagSelected()}>Send flag notice</button>
+            <div style={{ borderTop: '1px solid #ece8f2', marginTop: 24, paddingTop: 20 }}><h3>Flag an account or listing</h3><p style={{ color: '#77748c' }}>Choose a listing above, or flag this account. The owner will receive a notification and flagged listings will be held from public view.</p>
+              <button disabled={busy} style={buttonStyle(true)} onClick={() => { setFlagTarget({ kind: 'account', title: selected.email || selected.id }); setFlagReasonCode(''); setFlagNote(''); setFlagConfirm(false); }}>Flag account</button>
+              {flagTarget && <div style={{ background: '#fbf8ff', border: '1px solid #e7dbf8', borderRadius: 15, padding: 17, marginTop: 13 }}>
+                <b>Selected: {flagTarget.kind} · {flagTarget.title}</b>
+                <label style={{ display: 'block', marginTop: 13, fontWeight: 800 }}>Reason for flagging
+                  <select aria-label="Reason for flagging" value={flagReasonCode} onChange={event => { setFlagReasonCode(event.target.value); setFlagConfirm(false); }} style={inputStyle}><option value="">Select a reason</option>{flagReasons.map(reason => <option key={reason} value={reason}>{reason}</option>)}</select>
+                </label>
+                <label style={{ display: 'block', marginTop: 12, fontWeight: 800 }}>Admin note (optional)
+                  <textarea aria-label="Admin note" value={flagNote} onChange={event => { setFlagNote(event.target.value); setFlagConfirm(false); }} maxLength={400} placeholder="Add context for the owner and moderation history" style={{ ...inputStyle, minHeight: 85 }} />
+                </label>
+                {!flagConfirm ? <div style={{ display: 'flex', gap: 8, marginTop: 12 }}><button disabled={busy || !flagReasonCode || (flagReasonCode === 'Other' && flagNote.trim().length < 10)} style={buttonStyle()} onClick={() => setFlagConfirm(true)}>Review flag →</button><button style={buttonStyle(true)} onClick={() => setFlagTarget(null)}>Cancel</button></div>
+                  : <div role="group" aria-label="Confirm flag" style={{ background: '#fff', border: '1px solid #dfd2f2', borderRadius: 12, padding: 14, marginTop: 13 }}><b>Confirm flag</b><p style={{ margin: '7px 0' }}>Target: {flagTarget.kind} · {flagTarget.title}<br />Reason: {flagReasonCode}{flagNote.trim() ? ` · ${flagNote.trim()}` : ''}</p><p style={{ color: '#8b4658', fontSize: 12 }}>This sends the owner a notice{flagTarget.kind !== 'account' ? ' and puts this listing under review.' : '.'}</p><div style={{ display: 'flex', gap: 8 }}><button disabled={busy} style={buttonStyle()} onClick={() => void flagSelected()}>Confirm flag</button><button disabled={busy} style={buttonStyle(true)} onClick={() => setFlagConfirm(false)}>Back</button></div></div>}
+              </div>}
             </div>
           </> : <p>Select a user to inspect and edit their profile.</p>}</section>
         </div>

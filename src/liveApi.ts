@@ -113,16 +113,24 @@ export async function suggestCategory(userId: string, name: string) {
   unwrap(await assertDb().from('category_suggestions').insert({ freelancer_id: userId, proposed_name: name }));
 }
 export async function getRequests(userId: string): Promise<RequestPost[]> {
-  const rows = unwrap(await assertDb().from('requests').select('id,title,category_slug,details,taluka,created_at,finder_id').order('created_at', { ascending: false }));
+  const rows = unwrap(await assertDb().from('requests').select('id,title,category_slug,details,taluka,created_at,finder_id,moderation_status').order('created_at', { ascending: false }));
   const real = (rows || []).map((row: any) => ({ id: row.id, title: row.title, category: row.category_slug,
     details: row.details, taluka: row.taluka as Taluka, createdAt: new Date(row.created_at).getTime(),
-    finder: row.finder_id === userId ? 'You' : 'Local Finder', finderId: row.finder_id }));
+    finder: row.finder_id === userId ? 'You' : 'Local Finder', finderId: row.finder_id, moderationStatus: row.moderation_status }));
   return real;
 }
 export async function createRequest(userId: string, title: string, details: string, category: string, taluka: Taluka) {
   const center = talukaCenters[taluka];
   unwrap(await assertDb().from('requests').insert({ finder_id: userId, title, details, category_slug: category,
     taluka, latitude: center.lat, longitude: center.lon }));
+}
+export type ContentModerationFlag = { id: string; target_kind: 'service' | 'media' | 'request'; target_id: string; target_title: string | null; reason: string; created_at: string; status: string };
+export async function getMyContentFlags(userId: string): Promise<ContentModerationFlag[]> {
+  const rows = unwrap(await assertDb().from('admin_flags')
+    .select('id,target_kind,target_id,target_title,reason,created_at,status')
+    .eq('user_id', userId).neq('target_kind', 'account').eq('status', 'under_review')
+    .order('created_at', { ascending: false }));
+  return rows || [];
 }
 export async function applyToRequest(requestId: string, freelancerId: string, note: string) {
   unwrap(await assertDb().from('applications').insert({ request_id: requestId, freelancer_id: freelancerId, note }));

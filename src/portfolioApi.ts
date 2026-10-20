@@ -3,7 +3,7 @@ import { documentUploadError, photoUploadError, videoUploadError } from './media
 
 export type MediaKind = 'photo' | 'video' | 'document';
 export type PortfolioAsset = {
-  id: string; freelancer_id: string; kind: MediaKind; storage_path: string;
+  id: string; freelancer_id: string; kind: MediaKind; storage_path: string; moderation_status: 'clear' | 'under_review';
   file_name: string; mime_type: string; size_bytes: number; created_at: string; url: string;
 };
 const bucket = 'portfolio-public';
@@ -12,7 +12,7 @@ const checked = (error: { message: string } | null) => { if (error) throw new Er
 
 export async function listPortfolioAssets(freelancerId: string): Promise<PortfolioAsset[]> {
   const { data, error } = await client().from('portfolio_media')
-    .select('id,freelancer_id,kind,storage_path,file_name,mime_type,size_bytes,created_at')
+    .select('id,freelancer_id,kind,storage_path,file_name,mime_type,size_bytes,moderation_status,created_at')
     .eq('freelancer_id', freelancerId).order('created_at', { ascending: true });
   checked(error);
   return (data || []).map(row => ({ ...row, url: client().storage.from(bucket).getPublicUrl(row.storage_path).data.publicUrl })) as PortfolioAsset[];

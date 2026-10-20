@@ -3,12 +3,13 @@ import { Pressable, Text, View } from 'react-native';
 import { Freelancer } from './data';
 import { Button, color, Field, Heading } from './UI';
 import { getServices, reorderServices, saveService, ServiceListing, setServiceActive } from './serviceApi';
+import type { ContentModerationFlag } from './liveApi';
 
 const locationLabel: Record<ServiceListing['location'], string> = {
   remote: 'Remote', hybrid: 'Hybrid', on_site: 'On site',
 };
 
-export default function ProfileServices({ profile, isOwner, narrow }: { profile: Freelancer; isOwner: boolean; narrow: boolean }) {
+export default function ProfileServices({ profile, isOwner, narrow, flags = [] }: { profile: Freelancer; isOwner: boolean; narrow: boolean; flags?: ContentModerationFlag[] }) {
   const [services, setServices] = useState<ServiceListing[]>([]);
   const [loading, setLoading] = useState(!profile.demo);
   const [error, setError] = useState('');
@@ -72,6 +73,7 @@ export default function ProfileServices({ profile, isOwner, narrow }: { profile:
     {!loading && !profile.demo && !visible.length && <Text style={{ color: color.muted, fontFamily: 'Nunito', marginTop: 16 }}>{isOwner ? 'Add a service so visitors know exactly what you offer.' : 'This freelancer has not listed any services yet.'}</Text>}
     {!!visible.length && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 18 }}>{visible.map((service, index) => <View key={service.id} style={{ width: narrow ? '100%' : '48.5%', minWidth: narrow ? undefined : 260, borderWidth: 1, borderColor: '#ece4f7', backgroundColor: service.active ? '#fdfbff' : '#f6f5f7', borderRadius: 18, padding: 17 }}>
       <Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 17, fontWeight: '900' }}>{service.title}</Text>
+      {isOwner && service.moderation_status === 'under_review' && <View style={{ backgroundColor: '#fff0f2', borderRadius: 10, padding: 10, marginTop: 8 }}><Text style={{ color: '#ae3851', fontFamily: 'Nunito', fontWeight: '900', fontSize: 12 }}>Under review · hidden from public view</Text><Text style={{ color: '#8e5060', fontFamily: 'Nunito', fontSize: 12, marginTop: 3 }}>{flags.find(flag => flag.target_kind === 'service' && flag.target_id === service.id)?.reason || 'An admin flagged this service for review.'}</Text></View>}
       <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 13, lineHeight: 19, marginTop: 7 }}>{service.description}</Text>
       <Text style={{ color: color.purple, fontFamily: 'Nunito', fontSize: 12, fontWeight: '900', marginTop: 12 }}>Work mode: {locationLabel[service.location] || 'Remote'}{!service.active ? ' · Hidden' : ''}</Text>
       {isOwner && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}><Button outline flat disabled={busy} onPress={() => startEdit(service)} style={{ minHeight: 32 }} textStyle={{ fontSize: 11 }}>Edit</Button><Button outline flat disabled={busy} onPress={() => void toggle(service)} style={{ minHeight: 32 }} textStyle={{ fontSize: 11 }}>{service.active ? 'Hide' : 'Show'}</Button><Button outline flat disabled={busy || index === 0} onPress={() => void move(index, -1)} style={{ minHeight: 32 }} textStyle={{ fontSize: 11 }}>↑</Button><Button outline flat disabled={busy || index === services.length - 1} onPress={() => void move(index, 1)} style={{ minHeight: 32 }} textStyle={{ fontSize: 11 }}>↓</Button></View>}

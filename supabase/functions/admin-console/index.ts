@@ -134,10 +134,10 @@ Deno.serve(async request => {
     }
     if (action === 'detail') {
       const [services, media, requests, flags] = await Promise.all([
-        server.from('service_listings').select('id,title,description,category_slug,active,created_at').eq('freelancer_id', userId).order('created_at', { ascending: false }),
-        server.from('portfolio_media').select('id,kind,file_name,storage_path,created_at').eq('freelancer_id', userId).order('created_at', { ascending: false }),
-        server.from('requests').select('id,title,details,status,created_at').eq('finder_id', userId).order('created_at', { ascending: false }),
-        server.from('admin_flags').select('id,reason,created_at').eq('user_id', userId).order('created_at', { ascending: false }),
+        server.from('service_listings').select('id,title,description,category_slug,active,moderation_status,created_at').eq('freelancer_id', userId).order('created_at', { ascending: false }),
+        server.from('portfolio_media').select('id,kind,file_name,storage_path,moderation_status,created_at').eq('freelancer_id', userId).order('created_at', { ascending: false }),
+        server.from('requests').select('id,title,details,status,moderation_status,created_at').eq('finder_id', userId).order('created_at', { ascending: false }),
+        server.from('admin_flags').select('id,reason,target_kind,target_id,target_title,status,created_at').eq('user_id', userId).order('created_at', { ascending: false }),
       ]);
       return json({ services: unwrap(services), media: unwrap(media), requests: unwrap(requests), flags: unwrap(flags) });
     }
@@ -168,6 +168,25 @@ Deno.serve(async request => {
       unwrap(await server.from('notifications').insert({ user_id: userId, kind: 'admin_flag', title: `An admin flagged your account: ${reason}`, related_id: flag.id }));
       const auditRecorded = await log('flag', { flagId: flag.id, reason });
       return json({ flagId: flag.id, auditRecorded });
+    }
+    if (action === 'flagContent') {
+      if (!uuid(input.itemId)) return fail('Valid listing ID required.');
+      if (!['service', 'media', 'request'].includes(input.kind)) return fail('Choose a service, portfolio item, or requirement.');
+      const note = typeof input.note === 'string' ? input.note.trim() : '';
+      if (note.length > 400) return fail('Keep the admin note under 400 characters.');
+      const reasonCode = typeof input.reasonCode === 'string' ? input.reasonCode : '';
+      const flagId = unwrap(await server.rpc('admin_flag_listing', {
+        p_admin_id: auth.user.id, p_user_id: userId, p_kind: input.kind,
+        p_item_id: input.itemId, p_reason_code: reasonCode, p_admin_note: note || null,
+      }));
+      return json({ flagId, auditRecorded: true });
+    }
+    if (action === 'resolveFlag') {
+      if (!uuid(input.flagId)) return fail('Valid flag ID required.');
+      const existing = unwrap(await server.from('admin_flags').select('id').eq('id', input.flagId).eq('user_id', userId).maybeSingle());
+      if (!existing) return fail('Flag not found for this user.', 404);
+      unwrap(await server.rpc('admin_resolve_flag', { p_admin_id: auth.user.id, p_flag_id: input.flagId }));
+      return json({ resolved: true, auditRecorded: true });
     }
     if (action === 'removeContent') {
       if (!uuid(input.itemId)) return fail('Valid listing ID required.');

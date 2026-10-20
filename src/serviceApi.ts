@@ -7,6 +7,7 @@ export type ServiceListing = {
   description: string;
   location: 'remote' | 'hybrid' | 'on_site';
   active: boolean;
+  moderation_status: 'clear' | 'under_review';
   sort_order: number;
 };
 
@@ -17,7 +18,7 @@ function client() {
 
 export async function getServices(freelancerId: string): Promise<ServiceListing[]> {
   const { data, error } = await client().from('service_listings')
-    .select('id,freelancer_id,title,description,location,active,sort_order')
+    .select('id,freelancer_id,title,description,location,active,moderation_status,sort_order')
     .eq('freelancer_id', freelancerId)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
