@@ -7,6 +7,7 @@ import { color, Portrait } from './UI';
 import { publicWhatsapp } from './whatsapp';
 
 type Props = {
+  viewerId: string;
   compact: boolean;
   people: Freelancer[];
   selected: Freelancer | null;
@@ -37,7 +38,7 @@ function RailButton({ label, active, onPress, children, badge }: { label: string
   </Pressable>;
 }
 
-export default function ChatWorkspace({ compact, people, selected, messages, inbox, unreadTotal, draft, role, messageKey, onSelect, onBack, onClose, onHome, onAccount, onRequests, onWhatsappSetup, onDraft, onSend }: Props) {
+export default function ChatWorkspace({ viewerId, compact, people, selected, messages, inbox, unreadTotal, draft, role, messageKey, onSelect, onBack, onClose, onHome, onAccount, onRequests, onWhatsappSetup, onDraft, onSend }: Props) {
   const { height } = useWindowDimensions();
   const [search, setSearch] = useState('');
   const [onlyUnread, setOnlyUnread] = useState(false);
@@ -67,7 +68,7 @@ export default function ChatWorkspace({ compact, people, selected, messages, inb
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 9, paddingBottom: 18 }}>
       {filteredPeople.length ? filteredPeople.map(person => { const entry = inbox[person.id]; const isSelected = selected?.id === person.id; return <Pressable key={person.id} accessibilityRole="button" accessibilityLabel={`Open chat with ${person.name}${entry?.unread ? `, ${entry.unread} unread messages` : ''}`} onPress={() => onSelect(person)} style={{ flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 74, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 15, backgroundColor: isSelected ? '#f3edff' : '#fff' }}>
         <View style={{ width: 49 }}><Portrait index={person.image} imageUrl={person.imageUrl} name={person.name} height={49} radius={25} /></View>
-        <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} style={{ color: color.ink, fontFamily: font, fontSize: 15, fontWeight: entry?.unread ? '900' : '800' }}>{person.name}</Text><Text numberOfLines={1} style={{ color: entry?.unread ? color.ink : color.muted, fontFamily: font, fontSize: 12, marginTop: 3 }}>{entry?.lastBody || 'Start a conversation'}</Text></View>
+        <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} style={{ color: color.ink, fontFamily: font, fontSize: 15, fontWeight: entry?.unread ? '900' : '800' }}>{person.name}</Text><Text numberOfLines={1} style={{ color: entry?.unread ? color.ink : color.muted, fontFamily: font, fontSize: 12, marginTop: 3 }}>{entry?.lastBody ? `${entry.lastSenderId === viewerId ? 'You: ' : ''}${entry.lastBody}` : 'Start a conversation'}</Text></View>
         <View style={{ alignItems: 'flex-end', gap: 6 }}><Text style={{ color: entry?.unread ? color.purple : '#9995a9', fontFamily: font, fontSize: 10 }}>{timeLabel(entry?.lastAt || 0)}</Text>{!!entry?.unread && <View style={{ minWidth: 21, height: 21, borderRadius: 11, paddingHorizontal: 5, backgroundColor: color.coral, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontFamily: font, fontWeight: '900', fontSize: 11 }}>{entry.unread > 99 ? '99+' : entry.unread}</Text></View>}</View>
       </Pressable>; }) : <Text style={{ color: color.muted, fontFamily: font, padding: 18, textAlign: 'center' }}>{onlyUnread ? 'You’re all caught up.' : search ? 'No conversations match that search.' : 'Your conversations will appear here.'}</Text>}
     </ScrollView>

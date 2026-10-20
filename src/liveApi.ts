@@ -150,7 +150,7 @@ export async function getChatPartners(userId: string): Promise<{ id: string; fin
 export async function getChatInbox(userId: string): Promise<Record<string, ChatInboxEntry>> {
   const client = assertDb();
   const recentResult = await client.from('chat_messages')
-    .select('id,finder_id,freelancer_id,body,created_at')
+    .select('id,finder_id,freelancer_id,sender_id,body,created_at')
     .or(`finder_id.eq.${userId},freelancer_id.eq.${userId}`)
     .order('created_at', { ascending: false }).limit(300);
   const recent = unwrap(recentResult) as InboxMessageRow[];
@@ -165,7 +165,7 @@ export async function getChatInbox(userId: string): Promise<Record<string, ChatI
   const messages = new Map(recent.map(row => [row.id, row]));
   for (let offset = 0; offset < unreadIds.length; offset += 100) {
     const batch = unwrap(await client.from('chat_messages')
-      .select('id,finder_id,freelancer_id,body,created_at')
+      .select('id,finder_id,freelancer_id,sender_id,body,created_at')
       .in('id', unreadIds.slice(offset, offset + 100))) as InboxMessageRow[];
     batch.forEach(row => messages.set(row.id, row));
   }
