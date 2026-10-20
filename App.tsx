@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Image, Linking, Modal, Platform, Pressable, ScrollView, StatusBar, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, AppState, Image, Linking, Modal, Platform, Pressable, ScrollView, StatusBar, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import brandLogo from './assets/whychoozeme-logo.png';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapCanvas from './src/MapCanvas';
@@ -148,6 +148,9 @@ function ActionTile({ icon, title, detail, onPress, tone = '#efe8ff', wide = fal
 function CompletionRing({ percent }: { percent: number }) {
   return <View style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eee7ff', ...(Platform.OS === 'web' ? { backgroundImage: `conic-gradient(#6c37f4 ${percent}%, #eee7ff ${percent}% 100%)` } as any : { borderWidth: 8, borderColor: percent === 100 ? '#6c37f4' : '#c7b2fa' }) }}><View style={{ width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}><T style={{ fontSize: 23, fontWeight: '900', color: '#122657' }}>{percent}%</T></View></View>;
 }
+function DirectoryLoading({ place }: { place: string }) {
+  return <View accessibilityLabel="Loading creatives" style={{ maxWidth: 1540, width: '100%', alignSelf: 'center', padding: 32, marginTop: 14, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', gap: 10 }}><ActivityIndicator color={color.purple} /><T style={{ color: color.muted, fontSize: 13 }}>Finding creatives {place === 'Goa' ? 'in Goa' : `near ${place}`}…</T></View>;
+}
 function Overlay({ visible, title, onClose, children, width = 560 }: { visible: boolean; title: string; onClose: () => void; children: React.ReactNode; width?: number }) {
   return <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}><View style={{ flex: 1, backgroundColor: 'rgba(15,13,43,.48)', alignItems: 'center', justifyContent: 'center', padding: 16 }}><View style={{ backgroundColor: '#fffaf7', borderRadius: 25, width: '100%', maxWidth: width, maxHeight: '93%', overflow: 'hidden', shadowColor: '#191043', shadowOpacity: .24, shadowRadius: 20 }}><View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 19, paddingBottom: 14 }}><Heading size={23}>{title}</Heading><Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#f0e8f5', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.ink, fontSize: 22 }}>×</Text></Pressable></View><ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 25 }}>{children}</ScrollView></View></View></Modal>;
 }
@@ -166,7 +169,7 @@ export default function App() {
   const [menu, setMenu] = useState<'place' | 'avatar' | 'sort' | null>(null);
   const [mapShortcutHovered, setMapShortcutHovered] = useState(false);
   const [heroSearchFocused, setHeroSearchFocused] = useState(false);
-  const [place, setPlace] = useState('Goa'), [radius, setRadius] = useState('Local');
+  const [place, setPlace] = useSaved('browse-place', 'Goa'), [radius, setRadius] = useSaved('browse-radius', 'Local');
   const [category, setCategory] = useState('all'), [searchDraft, setSearchDraft] = useState(''), [search, setSearch] = useState('');
   const [savedOnly, setSavedOnly] = useState(false);
   const [sort, setSort] = useState<'Nearby' | 'Top rated' | 'Most reviewed'>('Nearby');
@@ -190,6 +193,8 @@ export default function App() {
   const [infoDialog, setInfoDialog] = useState<InfoTopic | null>(null);
   const [legalOpen, setLegalOpen] = useState(false);
   const [livePeople, setLivePeople] = useState<Freelancer[]>([]);
+  const [peopleLoaded, setPeopleLoaded] = useState(false);
+  const [peopleLoadError, setPeopleLoadError] = useState('');
   const [catalog, setCatalog] = useState<Category[]>(categories);
   const [authMode, setAuthMode] = useState<AuthMode>(() => Platform.OS === 'web' ? authModeFromUrl(globalThis.location.pathname, globalThis.location.search) : 'signIn');
   const [authBusy, setAuthBusy] = useState(false);
@@ -270,25 +275,25 @@ export default function App() {
     else globalThis.history.pushState({ wcm: snapshot }, '', url);
   }, [page, profile, collection, chatPerson, chatRoute, authMode]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(''), 6000); return () => clearTimeout(timer); }, [notice]);
-  const refreshPeople = useCallback(async () => { try { setLivePeople(await live.getFreelancers()); } catch (error) { setNotice((error as Error).message); } }, []);
+  const refreshPeople = useCallback(async () => { try { setLivePeople(await live.getFreelancers()); setPeopleLoadError(''); } catch (error) { setPeopleLoadError((error as Error).message); setNotice((error as Error).message); } finally { setPeopleLoaded(true); } }, []);
   const refreshAccount = useCallback(async (id: string) => {
     try {
       setAccountLoaded(false);
-      const people = await live.getFreelancers(); setLivePeople(people); setOwnProfile(people.find(person => person.id === id) || null);
+      const people = await live.getFreelancers(); setLivePeople(people); setPeopleLoadError(''); setPeopleLoaded(true); setOwnProfile(people.find(person => person.id === id) || null);
       const auth = await live.account();
       const meta = auth.user?.user_metadata;
       setAccountDisplayName(meta?.display_name || auth.user?.email?.split('@')[0] || 'Member');
       setSignedInRole(meta?.account_type === 'freelancer' ? 'freelancer' : meta?.account_type === 'finder' ? 'finder' : null);
       const result = await live.getFinder(id);
       setSetupRole(current => current || (meta?.account_type === 'freelancer' ? 'freelancer' : meta?.account_type === 'finder' ? 'finder' : people.some(person => person.id === id) ? 'freelancer' : result ? 'finder' : null));
-      if (result) { setFinder({ name: result.display_name, email: auth.user?.email || '', taluka: result.taluka }); setPlace(result.taluka); }
+      if (result) { setFinder({ name: result.display_name, email: auth.user?.email || '', taluka: result.taluka }); }
       else {
         if (meta?.display_name && meta?.taluka && meta?.account_type !== 'freelancer') {
           await live.saveFinder(id, meta.display_name, meta.taluka);
-          setFinder({ name: meta.display_name, email: auth.user?.email || '', taluka: meta.taluka }); setPlace(meta.taluka);
+          setFinder({ name: meta.display_name, email: auth.user?.email || '', taluka: meta.taluka });
         } else if (meta?.account_type === 'freelancer') {
           setFinder(null);
-          if (meta.taluka) { setFinderTaluka(meta.taluka); setPlace(meta.taluka); }
+          if (meta.taluka) setFinderTaluka(meta.taluka);
         }
       }
       if (meta?.display_name) setFormName(current => current || meta.display_name);
@@ -713,14 +718,15 @@ export default function App() {
       </View>
     </View>{secondaryMenuKeys.length > 0 && <DesktopCategoryNavigation {...desktopNavigation} visibleKeys={secondaryMenuKeys} dense={tablet} />}</View>}
     {page === 'home' && compact && <View style={{ paddingHorizontal: pagePadding, paddingTop: 20, paddingBottom: 30, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 20 }}>{mobileLocationPicker}<T style={{ color: color.muted, fontSize: 12 }}>{allPeople.length} creatives</T></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 20 }}>{mobileLocationPicker}<T style={{ color: color.muted, fontSize: 12 }}>{peopleLoaded ? `${homePeople.length} creatives` : 'Loading creatives…'}</T></View>
       <Heading size={32} style={{ marginTop: 19, lineHeight: 38 }}>Meet local <Text style={{ color: color.purple }}>talent</Text><Text style={{ color: color.orange }}> ✦</Text></Heading>
       <T style={{ color: color.muted, marginTop: 5, marginBottom: 21, fontSize: 15 }}>Explore Goa talent, portfolios and local skills.</T>
       <Pressable accessibilityRole="button" accessibilityLabel="Search freelancers" onPress={() => goMobileTab('search')} style={{ flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 52, backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, borderRadius: 17, paddingHorizontal: 16 }}><TabIcon name="search" color={color.purple} size={20} /><T style={{ color: '#89869b', fontSize: 14 }}>Search skills, names, or categories</T></Pressable>
       <PopularSkillChips items={popularCategories.slice(0, 4)} selected={category} onSelect={openHighlightedCategory} />
       <Pressable accessibilityRole="button" accessibilityLabel="Explore all on map" onPress={() => goMobileTab('map')} style={{ alignSelf: 'flex-end', marginTop: 13 }}><T style={{ color: color.purple, fontSize: 13, fontWeight: '900' }}>Explore the map →</T></Pressable>
-      {carouselGroups.map((group, index) => <React.Fragment key={group.category}><CarouselRow title={group.title} detail={group.detail} people={group.people} width={carouselViewportWidth} cardWidth={carouselCardWidth} onMore={() => { setCategory(group.category); setSavedOnly(false); setSearch(''); setSearchDraft(''); setPage('search'); }} renderCard={(person) => <ProfileCard person={person} width={carouselCardWidth} favorite={favorites.includes(person.id)} onFavorite={() => toggleFavorite(person.id)} onOpen={() => openProfile(person)} onChat={() => openContact(person)} />} /><HomeHighlights kind={(['standout','hiring','categories','discover'] as const)[index]} compact people={index === 3 ? allPeople : homePeople} requests={displayedRequests} categories={catalog} onProfile={openProfile} onCategory={openHighlightedCategory} onRequests={() => setPage('requests')} /></React.Fragment>)}
-      {!allPeople.length && <View style={{ padding: 26, backgroundColor: '#fff', borderRadius: 18 }}><T style={{ color: color.muted, textAlign: 'center' }}>Freelancer profiles will appear here soon.</T></View>}
+      {!peopleLoaded && <DirectoryLoading place={place} />}
+      {peopleLoaded && carouselGroups.map((group, index) => <React.Fragment key={group.category}><CarouselRow title={group.title} detail={group.detail} people={group.people} width={carouselViewportWidth} cardWidth={carouselCardWidth} onMore={() => { setCategory(group.category); setSavedOnly(false); setSearch(''); setSearchDraft(''); setPage('search'); }} renderCard={(person) => <ProfileCard person={person} width={carouselCardWidth} favorite={favorites.includes(person.id)} onFavorite={() => toggleFavorite(person.id)} onOpen={() => openProfile(person)} onChat={() => openContact(person)} />} /><HomeHighlights kind={(['standout','hiring','categories','discover'] as const)[index]} compact people={index === 3 ? allPeople : homePeople} requests={displayedRequests} categories={catalog} onProfile={openProfile} onCategory={openHighlightedCategory} onRequests={() => setPage('requests')} /></React.Fragment>)}
+      {peopleLoaded && !allPeople.length && <View style={{ padding: 26, backgroundColor: '#fff', borderRadius: 18, alignItems: 'center', gap: 12 }}><T style={{ color: color.muted, textAlign: 'center' }}>{peopleLoadError ? 'Could not load creatives. Please try again.' : 'Freelancer profiles will appear here soon.'}</T>{!!peopleLoadError && <Button onPress={() => void refreshPeople()}>Try again</Button>}</View>}
     </View>}
     {page === 'search' && compact && <View style={{ paddingHorizontal: pagePadding, paddingTop: 20, paddingBottom: 30, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
       <View style={{ zIndex: 20 }}>{mobileLocationPicker}</View><Heading size={30} style={{ marginTop: 19 }}>Find your person<Text style={{ color: color.coral }}> ✦</Text></Heading><T style={{ color: color.muted, marginTop: 4, marginBottom: 17 }}>Explore skills and creatives near you.</T>
@@ -745,10 +751,10 @@ export default function App() {
           </View>
         </View>
       </View>
-      <LocalCategoryShowcase people={mapPeople} categories={catalog} onCategory={openHighlightedCategory} />
+      {peopleLoaded ? <LocalCategoryShowcase people={mapPeople} categories={catalog} onCategory={openHighlightedCategory} /> : <DirectoryLoading place={place} />}
       <View style={{ maxWidth: 1540, width: '100%', alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 5, paddingBottom: 64 }}>
-        {carouselGroups.map((group, index) => <React.Fragment key={group.category}><CarouselRow title={group.title} detail={group.detail} people={group.people} width={carouselViewportWidth} cardWidth={carouselCardWidth} onMore={() => openCollection(group.title, group.category)} renderCard={(person) => <ProfileCard person={person} width={carouselCardWidth} favorite={favorites.includes(person.id)} onFavorite={() => toggleFavorite(person.id)} onOpen={() => openProfile(person)} onChat={() => openContact(person)} />} /><HomeHighlights kind={(['standout','hiring','categories','discover'] as const)[index]} compact={false} people={index === 3 ? allPeople : homePeople} requests={displayedRequests} categories={catalog} onProfile={openProfile} onCategory={openHighlightedCategory} onRequests={() => setPage('requests')} /></React.Fragment>)}
-        {!homePeople.length && <View style={{ padding: 34, borderRadius: 20, backgroundColor: '#fff', marginTop: 24 }}><Heading size={22}>No nearby creatives yet</Heading><T style={{ color: color.muted, marginTop: 6 }}>Try a wider location radius or explore all Goa.</T><Button onPress={() => setRadius('All Goa')} style={{ alignSelf: 'flex-start', marginTop: 13 }}>Show all Goa</Button></View>}
+        {peopleLoaded && carouselGroups.map((group, index) => <React.Fragment key={group.category}><CarouselRow title={group.title} detail={group.detail} people={group.people} width={carouselViewportWidth} cardWidth={carouselCardWidth} onMore={() => openCollection(group.title, group.category)} renderCard={(person) => <ProfileCard person={person} width={carouselCardWidth} favorite={favorites.includes(person.id)} onFavorite={() => toggleFavorite(person.id)} onOpen={() => openProfile(person)} onChat={() => openContact(person)} />} /><HomeHighlights kind={(['standout','hiring','categories','discover'] as const)[index]} compact={false} people={index === 3 ? allPeople : homePeople} requests={displayedRequests} categories={catalog} onProfile={openProfile} onCategory={openHighlightedCategory} onRequests={() => setPage('requests')} /></React.Fragment>)}
+        {peopleLoaded && !homePeople.length && <View style={{ padding: 34, borderRadius: 20, backgroundColor: '#fff', marginTop: 24 }}><Heading size={22}>{peopleLoadError ? 'Could not load creatives' : 'No nearby creatives yet'}</Heading><T style={{ color: color.muted, marginTop: 6 }}>{peopleLoadError ? 'Please try loading the directory again.' : 'Try a wider location radius or explore all Goa.'}</T><Button onPress={() => peopleLoadError ? void refreshPeople() : setRadius('All Goa')} style={{ alignSelf: 'flex-start', marginTop: 13 }}>{peopleLoadError ? 'Try again' : 'Show all Goa'}</Button></View>}
       </View>
     </>}
     {page === 'collection' && <View style={{ width: '100%', maxWidth: 1540, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 25, paddingBottom: 65 }}>
