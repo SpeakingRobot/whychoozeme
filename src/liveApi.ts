@@ -124,11 +124,11 @@ export async function createRequest(userId: string, title: string, details: stri
   unwrap(await assertDb().from('requests').insert({ finder_id: userId, title, details, category_slug: category,
     taluka, latitude: center.lat, longitude: center.lon }));
 }
-export type ContentModerationFlag = { id: string; target_kind: 'service' | 'media' | 'request'; target_id: string; target_title: string | null; reason: string; created_at: string; status: string };
+export type ContentModerationFlag = { id: string; target_kind: 'account' | 'service' | 'media' | 'request'; target_id: string | null; target_title: string | null; reason: string; created_at: string; status: string };
 export async function getMyContentFlags(userId: string): Promise<ContentModerationFlag[]> {
   const rows = unwrap(await assertDb().from('admin_flags')
     .select('id,target_kind,target_id,target_title,reason,created_at,status')
-    .eq('user_id', userId).neq('target_kind', 'account').eq('status', 'under_review')
+    .eq('user_id', userId).eq('status', 'under_review')
     .order('created_at', { ascending: false }));
   return rows || [];
 }
@@ -262,6 +262,9 @@ export async function getUnreadNotificationCount(): Promise<number> {
 }
 export async function markNotificationsRead(): Promise<void> {
   unwrap(await assertDb().from('notifications').update({ seen_at: new Date().toISOString() }).neq('kind', 'message').is('seen_at', null));
+}
+export async function markNotificationRead(notificationId: string): Promise<void> {
+  unwrap(await assertDb().from('notifications').update({ seen_at: new Date().toISOString() }).eq('id', notificationId).is('seen_at', null));
 }
 export async function getUnreadMessageCount(): Promise<number> {
   const { count, error } = await assertDb().from('notifications').select('id', { count: 'exact', head: true }).eq('kind', 'message').is('seen_at', null);
