@@ -18,9 +18,11 @@ type Props = {
   onChat: () => void;
   onSave: () => void;
   onMap: () => void;
+  onSafety?: () => void;
+  blocked?: boolean;
 };
 
-export default function ProfileWall({ profile, compact, narrow, rating, reviewCount, saved, onChat, onSave, onMap }: Props) {
+export default function ProfileWall({ profile, compact, narrow, rating, reviewCount, saved, onChat, onSave, onMap, onSafety, blocked = false }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const isPhone = compact;
   const isTablet = screenWidth < 1100;
@@ -70,10 +72,11 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
 
         <View style={{ marginTop: isPhone ? 3 : 7, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#eee8f3', flexDirection: isPhone ? 'column' : 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: isPhone ? 'center' : 'flex-start', alignItems: 'center', gap: 12, flex: isPhone ? undefined : 1 }}><ResponseBadge person={profile} profile /></View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10, width: isPhone ? '100%' : undefined }}>
-            <View style={{ flex: isPhone ? 1 : undefined }}><Button onPress={onChat} flat style={{ minHeight: 52, minWidth: isPhone ? undefined : 150, width: isPhone ? '100%' : undefined }}>Message</Button></View>
-            {!!whatsapp && <Button outline onPress={() => Linking.openURL(whatsapp)} style={{ minHeight: 52 }}>WhatsApp ↗</Button>}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10, width: isPhone ? '100%' : undefined }}>
+            <View style={{ flex: isPhone ? 1 : undefined }}><Button onPress={onChat} disabled={blocked} flat style={{ minHeight: 52, minWidth: isPhone ? undefined : 150, width: isPhone ? '100%' : undefined }}>{blocked ? 'Blocked' : 'Message'}</Button></View>
+            {!!whatsapp && !blocked && <Button outline onPress={() => Linking.openURL(whatsapp)} style={{ minHeight: 52 }}>WhatsApp ↗</Button>}
             <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Remove saved profile' : 'Save profile'} onPress={onSave} style={{ width: 52, height: 52, borderRadius: 17, backgroundColor: '#f4edff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.purple, fontSize: 26 }}>{saved ? '♥' : '♡'}</Text></Pressable>
+            {!!onSafety && <Pressable accessibilityRole="button" accessibilityLabel={`Report or block ${profile.name}`} onPress={onSafety} style={{ minHeight: 43, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: '#e9ccda', justifyContent: 'center' }}><Text style={{ color: '#a23c5d', fontFamily: 'Nunito', fontSize: 12, fontWeight: '900' }}>{blocked ? 'Unblock / Report' : 'Report / Block'}</Text></Pressable>}
           </View>
         </View>
       </View>

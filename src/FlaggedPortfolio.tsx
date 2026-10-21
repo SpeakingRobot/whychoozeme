@@ -10,7 +10,7 @@ export default function FlaggedPortfolio({ assets, flags, narrow }: { assets: Po
   return <View style={{ borderTopWidth: 1, borderTopColor: color.line, padding: narrow ? 17 : 27, backgroundColor: '#fff' }}>
     <Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 22, marginBottom: 5 }}>Portfolio items under review</Text>
     <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12, marginBottom: 15 }}>Only you and the admin team can see these items until the review is resolved.</Text>
-    {flagged.map(({ flag, asset }) => <View key={flag.id} style={{ borderRadius: 17, borderWidth: 1, borderColor: '#dce6f8', padding: narrow ? 14 : 19, marginBottom: 13, backgroundColor: '#fff' }}>
+    {flagged.map(({ flag, asset }) => <View key={flag.id} nativeID={`flag-media-${asset?.id}`} style={{ borderRadius: 17, borderWidth: 1, borderColor: '#dce6f8', padding: narrow ? 14 : 19, marginBottom: 13, backgroundColor: '#fff' }}>
       <View style={{ flexDirection: narrow ? 'column' : 'row', gap: 19 }}>
         <View style={{ width: narrow ? '100%' : 220, height: narrow ? 180 : 155, borderRadius: 13, overflow: 'hidden', backgroundColor: '#fff0f3', alignItems: 'center', justifyContent: 'center' }}>
           {asset?.kind === 'photo' ? <Image source={{ uri: asset.url }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <Text style={{ color: '#a15671', fontSize: 43 }}>{asset?.kind === 'video' ? '▶' : '▤'}</Text>}

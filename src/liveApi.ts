@@ -148,6 +148,23 @@ export async function getMyContentFlags(userId: string): Promise<ContentModerati
     .order('created_at', { ascending: false }));
   return rows || [];
 }
+export async function getInquiryParticipants(inquiryId: string): Promise<{ finder_id: string; freelancer_id: string } | null> {
+  const result = await assertDb().from('freelancer_inquiries').select('finder_id,freelancer_id').eq('id', inquiryId).maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  return result.data;
+}
+export async function getBlockedFreelancers(): Promise<string[]> {
+  const rows = unwrap(await assertDb().from('freelancer_blocks').select('freelancer_id')) || [];
+  return rows.map((row: { freelancer_id: string }) => row.freelancer_id);
+}
+export async function setFreelancerBlocked(finderId: string, freelancerId: string, blocked: boolean): Promise<void> {
+  const client = assertDb();
+  if (blocked) unwrap(await client.from('freelancer_blocks').insert({ finder_id: finderId, freelancer_id: freelancerId }));
+  else unwrap(await client.from('freelancer_blocks').delete().eq('finder_id', finderId).eq('freelancer_id', freelancerId));
+}
+export async function reportFreelancer(finderId: string, freelancerId: string, reason: string): Promise<void> {
+  unwrap(await assertDb().from('freelancer_reports').insert({ finder_id: finderId, freelancer_id: freelancerId, reason: reason.trim() }));
+}
 export async function applyToRequest(requestId: string, freelancerId: string, note: string) {
   unwrap(await assertDb().from('applications').insert({ request_id: requestId, freelancer_id: freelancerId, note }));
 }
