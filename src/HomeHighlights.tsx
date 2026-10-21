@@ -68,7 +68,9 @@ export default function HomeHighlights({ kind, compact, people, requests, catego
     : compact ? '100%' : screenWidth < 1100 ? '47.5%' : kind === 'standout' ? '23.8%' : '30.6%';
   const portraitSize = kind === 'discover' ? screenWidth >= 1400 ? 70 : screenWidth >= 1050 ? 56 : 64 : compact ? 88 : screenWidth < 1100 ? 88 : kind === 'standout' && screenWidth >= 1300 ? 82 : 110;
   const accent = kind === 'hiring' ? '#c56b36' : color.purple;
-  return <View style={{ marginTop: 30, paddingVertical: 23, paddingHorizontal: compact ? 14 : 22, backgroundColor: '#fff', borderRadius: 24, borderWidth: 1, borderColor: '#ede8e7', shadowColor: '#766470', shadowOpacity: .08, shadowRadius: 20, elevation: 2 }}>
+  return <View style={{ marginTop: 30, paddingVertical: 23, paddingHorizontal: compact ? 14 : 22, backgroundColor: '#fff', borderRadius: 24, borderWidth: kind === 'standout' ? 2 : 1, borderColor: kind === 'standout' ? '#b98bff' : '#ede8e7', shadowColor: kind === 'standout' ? color.purple : '#766470', shadowOpacity: kind === 'standout' ? .16 : .08, shadowRadius: 20, elevation: 2 }}>
+    {kind === 'standout' && <View pointerEvents="none" style={{ position: 'absolute', top: 6, right: 6, bottom: 6, left: 6, borderWidth: 1, borderColor: '#ffe1c6', borderRadius: 18 }} />}
+    {kind === 'standout' && <View pointerEvents="none" style={{ position: 'absolute', left: 16, right: 16, bottom: -2, height: 3, borderRadius: 3, backgroundColor: color.orange }} />}
     <View style={{ width: 35, height: 3, borderRadius: 3, backgroundColor: accent, marginBottom: 10 }} />
     <Heading size={compact ? 21 : 25}>{heading} <Text style={{ color: color.coral }}>✦</Text></Heading>
     <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 13, marginTop: 3, marginBottom: 18 }}>{subtitle}</Text>

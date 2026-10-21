@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>WhyChoozeMe profile frame artwork template</title>
+  <desc>Design in the outer 64 pixel band. Hide or delete the Guides layer before exporting a transparent 1024 by 1024 PNG or WebP.</desc>
+  <g id="Your-frame-artwork" fill="none" stroke="#713af0" stroke-width="13">
+    <rect x="11" y="11" width="1002" height="1002" rx="112"/>
+    <rect x="37" y="37" width="950" height="950" rx="94" stroke="#ff8939" stroke-width="8"/>
+  </g>
+  <g id="Guides-hide-before-export" fill="none" stroke="#00a6cc" stroke-width="2" stroke-dasharray="12 10">
+    <rect x="64" y="64" width="896" height="896" rx="72"/>
+  </g>
+</svg>

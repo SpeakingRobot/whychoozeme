@@ -9,6 +9,8 @@ import { DESCRIPTION_LIMIT } from './descriptionFormatting';
 import { confirmEmailOtp, requestEmailOtp } from './emailOtp';
 import { whatsappUrl } from './whatsapp';
 import { summarizeChatInbox, type ChatInboxEntry, type InboxMessageRow } from './chatInbox';
+import { CHAT_IMAGE_TARGET_BYTES } from './chatImages';
+import { FRAME_PRESETS, type FramePreset, type ProfileFrameDesign } from './ProfileFrame';
 
 export const db: SupabaseClient | null = liveEnabled ? createClient(supabaseUrl, supabasePublishableKey, {
   auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: Platform.OS === 'web', ...(Platform.OS === 'web' ? {} : { storage: AsyncStorage }) },
@@ -37,7 +39,7 @@ export async function getFinder(userId: string) {
 }
 export async function getFreelancers(): Promise<Freelancer[]> {
   const client = assertDb();
-  const [profileResult, sampleResult, premiumResult, presenceResult, responseResult, reviewResult, contactResult] = await Promise.all([
+  const [profileResult, sampleResult, premiumResult, presenceResult, responseResult, reviewResult, contactResult, frameResult, frameSelectionResult] = await Promise.all([
     client.from('freelancer_profiles').select('user_id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,description,software_skills,portfolio_links,portfolio,image_url,created_at').order('created_at', { ascending: false }),
     client.from('sample_freelancers').select('id,display_name,role_title,category_slug,tags,taluka,locality,latitude,longitude,why_me,portfolio,card_line,image_index,rating,review_count,sort_order').order('sort_order', { ascending: true }),
     client.from('user_entitlements').select('user_id').eq('premium', true),
@@ -45,6 +47,8 @@ export async function getFreelancers(): Promise<Freelancer[]> {
     client.rpc('freelancer_response_stats'),
     client.rpc('freelancer_review_summary'),
     client.from('freelancer_contacts').select('freelancer_id,whatsapp').eq('is_public', true),
+    client.from('profile_frames').select('id,name,storage_path').eq('active', true),
+    client.from('profile_frame_selections').select('freelancer_id,preset,custom_frame_id'),
   ]);
   const rows = unwrap(profileResult), samples = unwrap(sampleResult);
   const premiumUsers = new Set((unwrap(premiumResult) || []).map((row: any) => row.user_id));
@@ -53,6 +57,8 @@ export async function getFreelancers(): Promise<Freelancer[]> {
   const responses = new Map<string, { median_response_minutes: number; response_count: number }>((responseResult.data || []).map((row: any) => [row.freelancer_id, row]));
   const reviews = new Map<string, { review_count: number; average_rating: number }>((reviewResult.data || []).map((row: any) => [row.freelancer_id, row]));
   const publicContacts = new Map<string, string>((contactResult.data || []).map((row: any) => [row.freelancer_id, row.whatsapp]));
+  const frameDesigns = new Map<string, string>((frameResult.data || []).map((row: any) => [row.id, client.storage.from('profile-frames').getPublicUrl(row.storage_path).data.publicUrl]));
+  const frameSelections = new Map<string, { preset: FramePreset; custom_frame_id: string | null }>((frameSelectionResult.data || []).map((row: any) => [row.freelancer_id, row]));
   // Sample-only states disappear with the sample rows; real accounts always use tracked activity.
   const sampleActivityMinutes = [0, 18, 145, 46, 0, 1440, 35, 8];
   const sampleResponseMinutes = [6, 28, 12, 52, 9, 120, 14, 38];
@@ -68,7 +74,7 @@ export async function getFreelancers(): Promise<Freelancer[]> {
   const realPeople = (rows || []).map((row: any) => ({ id: row.user_id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality || row.taluka,
     lat: row.latitude, lon: row.longitude, rating: Number(reviews.get(row.user_id)?.average_rating || 0), reviews: reviews.get(row.user_id)?.review_count || 0, distance: 'Nearby',
-    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', description: row.description || '', software: normalizeSoftware(row.software_skills), links: normalizeLinks(row.portfolio_links), publicWhatsappUrl: whatsappUrl(publicContacts.get(row.user_id) || '') || undefined, work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, premium: premiumUsers.has(row.user_id), lastActiveAt: activity.get(row.user_id),
+    line: row.why_me?.slice(0, 85) || '', why: row.why_me || '', description: row.description || '', software: normalizeSoftware(row.software_skills), links: normalizeLinks(row.portfolio_links), publicWhatsappUrl: whatsappUrl(publicContacts.get(row.user_id) || '') || undefined, work: row.portfolio || [], image: -1, imageUrl: row.image_url || undefined, framePreset: frameSelections.get(row.user_id)?.preset || 'classic', frameCustomId: frameSelections.get(row.user_id)?.custom_frame_id || undefined, frameOverlayUrl: frameDesigns.get(frameSelections.get(row.user_id)?.custom_frame_id || '') || undefined, premium: premiumUsers.has(row.user_id), lastActiveAt: activity.get(row.user_id),
     responseMinutes: responses.get(row.user_id)?.median_response_minutes, responseSamples: responses.get(row.user_id)?.response_count }));
   const samplePeople = (samples || []).map((row: any) => ({ id: row.id, name: row.display_name, role: row.role_title,
     category: row.category_slug, tags: row.tags || [], taluka: row.taluka as Taluka, place: row.locality,
@@ -90,6 +96,16 @@ export async function saveFreelancer(userId: string, person: Freelancer) {
   unwrap(await assertDb().from('freelancer_profiles').upsert({ user_id: userId, display_name: person.name,
     role_title: person.role, category_slug: person.category, tags: person.tags, taluka: person.taluka,
     locality: person.place, latitude: person.lat, longitude: person.lon, why_me: person.why, description: (person.description || '').slice(0, DESCRIPTION_LIMIT), software_skills: normalizeSoftware(person.software), portfolio_links: normalizeLinks(person.links), portfolio: person.work, image_url: person.imageUrl || null }));
+}
+export async function getProfileFrames(): Promise<ProfileFrameDesign[]> {
+  const client = assertDb();
+  const result = await client.from('profile_frames').select('id,name,storage_path').eq('active', true).order('created_at', { ascending: false });
+  if (result.error) return [];
+  return (result.data || []).map(row => ({ id: row.id, name: row.name, url: client.storage.from('profile-frames').getPublicUrl(row.storage_path).data.publicUrl }));
+}
+export async function saveProfileFrame(userId: string, preset: string, customFrameId: string | null): Promise<void> {
+  if (!FRAME_PRESETS.some(frame => frame.key === preset)) throw new Error('Choose a valid frame style.');
+  unwrap(await assertDb().from('profile_frame_selections').upsert({ freelancer_id: userId, preset, custom_frame_id: customFrameId, updated_at: new Date().toISOString() }));
 }
 export async function savePortfolioLinks(userId: string, links: PortfolioLink[]) {
   unwrap(await assertDb().from('freelancer_profiles').update({ portfolio_links: normalizeLinks(links) }).eq('user_id', userId));
@@ -188,21 +204,25 @@ export async function getChatAttachments(messageIds: string[]): Promise<Record<s
   const client = assertDb();
   const rows: { message_id: string; storage_path: string; file_name: string; mime_type: string; size_bytes: number }[] = [];
   for (let offset = 0; offset < messageIds.length; offset += 100) {
-    rows.push(...(unwrap(await client.from('chat_attachments')
+    const ids = messageIds.slice(offset, offset + 100);
+    const rpc = await client.rpc('list_my_chat_attachments', { p_message_ids: ids });
+    if (!rpc.error) rows.push(...(rpc.data || []));
+    else rows.push(...(unwrap(await client.from('chat_attachments')
       .select('message_id,storage_path,file_name,mime_type,size_bytes')
-      .in('message_id', messageIds.slice(offset, offset + 100))) || []));
+      .in('message_id', ids)) || []));
   }
   const entries = await Promise.all(rows.map(async row => {
     const result = await client.storage.from('chat-private').createSignedUrl(row.storage_path, 3600);
-    if (result.error || !result.data) return null;
-    return [row.message_id, { fileName: row.file_name, mimeType: row.mime_type, sizeBytes: row.size_bytes, url: result.data.signedUrl }] as const;
+    return [row.message_id, { fileName: row.file_name, mimeType: row.mime_type, sizeBytes: row.size_bytes, url: result.data?.signedUrl || '' }] as const;
   }));
-  return Object.fromEntries(entries.filter((entry): entry is NonNullable<typeof entry> => !!entry));
+  return Object.fromEntries(entries);
 }
 export const chatFileTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 export function chatFileError(file: { type: string; size: number; name: string }): string | null {
   if (!chatFileTypes.includes(file.type)) return 'Attach a PDF, JPEG, PNG or WebP file.';
-  if (!file.size || file.size > 10 * 1024 * 1024) return 'Keep chat files under 10 MB.';
+  if (!file.size) return 'Choose a non-empty file.';
+  if (file.type.startsWith('image/') && file.size > CHAT_IMAGE_TARGET_BYTES) return 'Could not resize this image below 300 KB.';
+  if (file.type === 'application/pdf' && file.size > 10 * 1024 * 1024) return 'Keep PDF files under 10 MB.';
   if (!file.name.trim()) return 'Choose a named file.';
   return null;
 }

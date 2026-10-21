@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Linking, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { Freelancer } from './data';
-import { Button, color, Heading, Portrait } from './UI';
+import { Button, color, Heading } from './UI';
 import PresenceStatus, { presenceLabel } from './PresenceStatus';
 import ResponseBadge from './ResponseBadge';
 import { SoftwareMark } from './SoftwarePicker';
 import { publicWhatsapp } from './whatsapp';
+import { FramePortrait } from './ProfileFrame';
 
 type Props = {
   profile: Freelancer;
@@ -35,8 +36,8 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
   return <View style={{ padding: narrow ? 18 : isTablet ? 25 : 32 }}>
     <View style={{ flexDirection: isPhone ? 'column' : 'row', alignItems: isPhone ? 'center' : 'flex-start', gap: isPhone ? 17 : isTablet ? 24 : 34 }}>
       <View style={{ alignItems: 'center', width: isPhone ? '100%' : portraitSize }}>
-        <View style={{ width: portraitSize, height: portraitSize, padding: 5, borderWidth: 2, borderColor: '#e5d3ff', borderRadius: 30, backgroundColor: '#fff', shadowColor: color.purple, shadowOpacity: .14, shadowRadius: 18, elevation: 3 }}>
-          <Portrait index={profile.image} imageUrl={profile.imageUrl} name={profile.name} height={portraitSize - 14} radius={23} />
+        <View style={{ width: portraitSize, height: portraitSize }}>
+          <FramePortrait index={profile.image} imageUrl={profile.imageUrl} name={profile.name} size={portraitSize} frame={profile.framePreset} overlayUrl={profile.frameOverlayUrl} />
           {presenceLabel(profile.lastActiveAt) === 'Online now' && <View style={{ position: 'absolute', left: 17, bottom: 17 }}><PresenceStatus person={profile} /></View>}
         </View>
         {!!presenceLabel(profile.lastActiveAt) && presenceLabel(profile.lastActiveAt) !== 'Online now' && <View style={{ marginTop: 11 }}><PresenceStatus person={profile} /></View>}

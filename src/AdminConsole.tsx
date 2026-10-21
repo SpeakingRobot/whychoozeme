@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { account, db, isAdmin, sendEmailCode, signOut, verifyEmailCode } from './liveApi';
 import { ADMIN_PATH } from './adminRoute';
 import AdminFlagFlow, { type FlagTarget } from './AdminFlagFlow';
+import AdminFrameStudio from './AdminFrameStudio';
 
 type Profile = Record<string, any>;
 type AdminUser = {
@@ -293,6 +294,7 @@ export default function AdminConsole() {
             </div>
           </> : <p>Select a user to inspect and edit their profile.</p>}</section>
         </div>
+        <AdminFrameStudio />
       </>}
       {flagSuccess && <div role="dialog" aria-modal="true" aria-label="Flag submitted successfully" style={{ position: 'fixed', inset: 0, zIndex: 201, background: 'rgba(10,29,63,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}><div style={{ width: '100%', maxWidth: 390, background: '#fff', border: '1px solid #b4e8d0', borderRadius: 19, padding: 27, textAlign: 'center', boxShadow: '0 25px 70px rgba(7,29,68,.25)' }}><div style={{ width: 63, height: 63, borderRadius: 32, background: '#1eb976', color: '#fff', fontSize: 39, fontWeight: 900, lineHeight: '63px', margin: '0 auto 15px' }}>✓</div><h3 style={{ color: '#173b6d', margin: '0 0 8px' }}>{flagSuccess.kind === 'account' ? 'Account flagged successfully' : 'Content flagged successfully'}</h3><p style={{ color: '#627b9c', fontSize: 13, lineHeight: 1.5 }}>The flag for {flagSuccess.title} was saved to moderation history and the owner was notified.</p><button style={{ ...buttonStyle(), background: '#1baa73', borderColor: '#1baa73', marginTop: 9 }} onClick={() => setFlagSuccess(null)}>OK / Close</button></div></div>}
       <p style={{ marginTop: 32, color: '#8b8799', fontSize: 12 }}>Admin console · {ADMIN_PATH}</p>

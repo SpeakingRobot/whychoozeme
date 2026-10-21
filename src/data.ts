@@ -43,6 +43,9 @@ export type Freelancer = {
   work: string[];
   image: number;
   imageUrl?: string;
+  framePreset?: string;
+  frameCustomId?: string;
+  frameOverlayUrl?: string;
   premium?: boolean;
   demo?: boolean;
   lastActiveAt?: string;
