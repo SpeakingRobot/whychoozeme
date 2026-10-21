@@ -169,7 +169,7 @@ export default function App() {
   const [menu, setMenu] = useState<'place' | 'avatar' | 'sort' | null>(null);
   const [mapShortcutHovered, setMapShortcutHovered] = useState(false);
   const [heroSearchFocused, setHeroSearchFocused] = useState(false);
-  const [place, setPlace] = useSaved('browse-place', 'Goa'), [radius, setRadius] = useSaved('browse-radius', 'Local');
+  const [place, setPlace] = useState('Goa'), [radius, setRadius] = useState('Local');
   const [category, setCategory] = useState('all'), [searchDraft, setSearchDraft] = useState(''), [search, setSearch] = useState('');
   const [savedOnly, setSavedOnly] = useState(false);
   const [sort, setSort] = useState<'Nearby' | 'Top rated' | 'Most reviewed'>('Nearby');
