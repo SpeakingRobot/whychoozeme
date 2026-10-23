@@ -286,13 +286,15 @@ export async function getMyProfileStats(): Promise<{ profileViews: number; saves
   const rows = unwrap(await assertDb().rpc('my_profile_stats')) || [];
   return { profileViews: Number(rows[0]?.profile_views || 0), saves: Number(rows[0]?.saves || 0) };
 }
-export type FreelancerReview = { finder_id: string; freelancer_id: string; rating: number; body: string; created_at: string };
+export type FreelancerReview = { finder_id: string; freelancer_id: string; rating: number; body: string; created_at: string; finder_name: string; freelancer_reply: string | null; reply_updated_at: string | null };
 export async function getFreelancerReviews(freelancerId: string): Promise<FreelancerReview[]> {
-  return unwrap(await assertDb().from('freelancer_reviews').select('finder_id,freelancer_id,rating,body,created_at')
-    .eq('freelancer_id', freelancerId).order('created_at', { ascending: false }).limit(50)) || [];
+  return unwrap(await assertDb().rpc('public_freelancer_reviews', { p_freelancer: freelancerId })) || [];
 }
 export async function saveFreelancerReview(finderId: string, freelancerId: string, rating: number, body: string) {
   unwrap(await assertDb().from('freelancer_reviews').upsert({ finder_id: finderId, freelancer_id: freelancerId, rating, body }, { onConflict: 'finder_id,freelancer_id' }));
+}
+export async function saveFreelancerReviewReply(finderId: string, freelancerId: string, body: string): Promise<void> {
+  unwrap(await assertDb().from('freelancer_review_replies').upsert({ finder_id: finderId, freelancer_id: freelancerId, body }, { onConflict: 'finder_id,freelancer_id' }));
 }
 export async function canReviewFreelancer(finderId: string, freelancerId: string) {
   const result = await assertDb().from('chat_messages').select('id').eq('finder_id', finderId)
