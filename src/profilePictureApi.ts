@@ -27,3 +27,27 @@ export async function uploadProfilePicture(userId: string, file: File, previousU
   if (oldPath?.startsWith(`${userId}/photo/avatar-`)) await db.storage.from(bucket).remove([oldPath]);
   return url;
 }
+
+export async function uploadFinderPicture(userId: string, file: File, previousPath?: string): Promise<string> {
+  const error = profilePictureError(file);
+  if (error) throw new Error(error);
+  if (!db) throw new Error('Supabase is not configured.');
+  const avatarBucket = 'finder-avatars';
+  const path = `${userId}/${crypto.randomUUID()}.${allowed[file.type]}`;
+  const stored = await db.storage.from(avatarBucket).upload(path, file, { contentType: file.type, upsert: false });
+  if (stored.error) throw new Error(stored.error.message);
+  const saved = await db.from('finder_profiles').update({ avatar_path: path }).eq('user_id', userId).select('user_id').single();
+  if (saved.error || !saved.data) {
+    await db.storage.from(avatarBucket).remove([path]);
+    throw new Error(saved.error?.message || 'Finder photo could not be saved.');
+  }
+  if (previousPath?.startsWith(`${userId}/`)) await db.storage.from(avatarBucket).remove([previousPath]);
+  return path;
+}
+
+export async function removeFinderPicture(userId: string, path: string): Promise<void> {
+  if (!db) throw new Error('Supabase is not configured.');
+  const saved = await db.from('finder_profiles').update({ avatar_path: null }).eq('user_id', userId).select('user_id').single();
+  if (saved.error || !saved.data) throw new Error(saved.error?.message || 'Finder photo could not be removed.');
+  if (path.startsWith(`${userId}/`)) await db.storage.from('finder-avatars').remove([path]);
+}

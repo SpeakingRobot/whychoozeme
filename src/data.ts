@@ -43,6 +43,8 @@ export type Freelancer = {
   work: string[];
   image: number;
   imageUrl?: string;
+  certifications?: Certification[];
+  experience?: WorkExperience[];
   framePreset?: string;
   frameCustomId?: string;
   frameOverlayUrl?: string;
@@ -53,7 +55,9 @@ export type Freelancer = {
   responseSamples?: number;
 };
 
-export type Finder = { name: string; email: string; taluka: Taluka };
+export type Certification = { name: string; issuer: string; year?: string };
+export type WorkExperience = { role: string; organization: string; period?: string; summary?: string };
+export type Finder = { name: string; email: string; taluka: Taluka; avatarPath?: string; imageUrl?: string };
 export type RequestPost = { id: string; title: string; category: string; details: string; taluka: Taluka; createdAt: number; finder: string; finderId?: string; moderationStatus?: 'clear' | 'under_review' };
 export type ChatMessage = { id: string; freelancerId: string; body: string; from: 'finder' | 'freelancer'; time: number; attachment?: import('./liveApi').ChatAttachment };
 

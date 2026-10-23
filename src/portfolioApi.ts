@@ -4,7 +4,7 @@ import { documentUploadError, photoUploadError, videoUploadError } from './media
 export type MediaKind = 'photo' | 'video' | 'document';
 export type PortfolioAsset = {
   id: string; freelancer_id: string; kind: MediaKind; storage_path: string; moderation_status: 'clear' | 'under_review';
-  file_name: string; mime_type: string; size_bytes: number; created_at: string; url: string;
+  file_name: string; mime_type: string; size_bytes: number; caption: string; created_at: string; url: string;
 };
 const bucket = 'portfolio-public';
 const client = () => { if (!db) throw new Error('Supabase is not configured.'); return db; };
@@ -12,7 +12,7 @@ const checked = (error: { message: string } | null) => { if (error) throw new Er
 
 export async function listPortfolioAssets(freelancerId: string): Promise<PortfolioAsset[]> {
   const { data, error } = await client().from('portfolio_media')
-    .select('id,freelancer_id,kind,storage_path,file_name,mime_type,size_bytes,moderation_status,created_at')
+    .select('id,freelancer_id,kind,storage_path,file_name,mime_type,size_bytes,caption,moderation_status,created_at')
     .eq('freelancer_id', freelancerId).order('created_at', { ascending: true });
   checked(error);
   return (data || []).map(row => ({ ...row, url: client().storage.from(bucket).getPublicUrl(row.storage_path).data.publicUrl })) as PortfolioAsset[];
@@ -67,13 +67,21 @@ export async function replacePortfolioVideo(freelancerId: string, file: File, ol
     await client().storage.from(bucket).remove([path]);
     if (old) {
       const restored = await client().from('portfolio_media').insert({ id: old.id, freelancer_id: freelancerId, kind: 'video',
-        storage_path: old.storage_path, file_name: old.file_name, mime_type: old.mime_type, size_bytes: old.size_bytes,
+        storage_path: old.storage_path, file_name: old.file_name, mime_type: old.mime_type, size_bytes: old.size_bytes, caption: old.caption,
         created_at: old.created_at });
       if (restored.error) throw new Error(`Video update failed and the previous listing could not be restored: ${restored.error.message}`);
     }
     throw new Error(error.message);
   }
   if (old) await client().storage.from(bucket).remove([old.storage_path]);
+}
+
+export async function updatePortfolioCaption(asset: PortfolioAsset, caption: string): Promise<void> {
+  const value = caption.trim();
+  if (value.length > 500) throw new Error('Keep captions under 500 characters.');
+  const result = await client().from('portfolio_media').update({ caption: value })
+    .eq('id', asset.id).eq('freelancer_id', asset.freelancer_id).select('id').single();
+  if (result.error || !result.data) throw new Error(result.error?.message || 'Caption could not be saved.');
 }
 
 export async function removePortfolioAsset(asset: PortfolioAsset): Promise<void> {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import { Freelancer } from './data';
 import * as live from './liveApi';
 import { Button, color, Heading } from './UI';
@@ -57,7 +57,7 @@ export default function ProfileReviews({ profile, userId, onChanged }: { profile
       {reviews.length ? reviews.map(item => <View key={item.finder_id} nativeID={`review-${item.finder_id}`} style={{ paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: color.line }}>
         <Text style={{ color: '#bd820c', fontSize: 17 }}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</Text>
         <Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 14, lineHeight: 21, marginTop: 5 }}>{item.body}</Text>
-        <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12, marginTop: 5 }}>{item.finder_name || 'Finder'} · {new Date(item.created_at).toLocaleDateString()}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 7 }}>{!!item.finder_avatar_path && <Image source={{ uri: live.finderAvatarUrl(item.finder_avatar_path) }} style={{ width: 25, height: 25, borderRadius: 13 }} />}<Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12 }}>{item.finder_name || 'Finder'} · {new Date(item.created_at).toLocaleDateString()}</Text></View>
         {!!item.freelancer_reply && <View style={{ backgroundColor: '#f7f2ff', borderLeftWidth: 3, borderLeftColor: color.purple, borderRadius: 10, padding: 12, marginTop: 12 }}><Text style={{ color: color.purple, fontFamily: 'Nunito', fontWeight: '900', fontSize: 12 }}>Reply from {profile.name}</Text><Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 13, lineHeight: 20, marginTop: 4 }}>{item.freelancer_reply}</Text></View>}
         {userId === profile.id && (replyingTo === item.finder_id ? <View style={{ marginTop: 12 }}><TextInput accessibilityLabel={`Reply to ${item.finder_name || 'Finder'}`} value={replyBody} onChangeText={setReplyBody} maxLength={800} multiline placeholder="Write a public reply to this review" placeholderTextColor="#8e8ca0" style={{ backgroundColor: '#fff', borderColor: color.line, borderWidth: 1, borderRadius: 12, minHeight: 85, padding: 11, fontFamily: 'Nunito', color: color.ink, textAlignVertical: 'top' }} /><View style={{ flexDirection: 'row', gap: 8, marginTop: 9 }}><Button disabled={busy} onPress={() => void saveReply(item.finder_id)}>{busy ? 'Saving…' : 'Post reply'}</Button><Button outline disabled={busy} onPress={() => { setReplyingTo(null); setReplyBody(''); }}>Cancel</Button></View></View> : <Button outline flat onPress={() => { setReplyingTo(item.finder_id); setReplyBody(item.freelancer_reply || ''); setError(''); }} style={{ alignSelf: 'flex-start', minHeight: 35, marginTop: 10 }}>{item.freelancer_reply ? 'Edit reply' : 'Reply to review'}</Button>)}
       </View>) : <Text style={{ color: color.muted, fontFamily: 'Nunito', marginTop: 15 }}>No community reviews yet.</Text>}

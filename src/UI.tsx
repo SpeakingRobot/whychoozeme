@@ -22,8 +22,8 @@ export function Button({ children, onPress, outline = false, flat = false, style
   </Pressable>;
 }
 
-export function Field({ value, onChangeText, placeholder, multiline = false, keyboardType, secureTextEntry, style }: { value: string; onChangeText: (text: string) => void; placeholder: string; multiline?: boolean; keyboardType?: any; secureTextEntry?: boolean; style?: any }) {
-  return <TextInput accessibilityLabel={placeholder} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#9695ad" multiline={multiline} keyboardType={keyboardType} secureTextEntry={secureTextEntry} style={[{ borderWidth: 1, borderColor: '#e9e4ee', backgroundColor: '#fff', borderRadius: 16, minHeight: multiline ? 100 : 48, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: color.ink, fontFamily: 'Nunito', textAlignVertical: multiline ? 'top' : 'center' }, style]} />;
+export function Field({ value, onChangeText, placeholder, multiline = false, keyboardType, secureTextEntry, maxLength, style }: { value: string; onChangeText: (text: string) => void; placeholder: string; multiline?: boolean; keyboardType?: any; secureTextEntry?: boolean; maxLength?: number; style?: any }) {
+  return <TextInput accessibilityLabel={placeholder} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#9695ad" multiline={multiline} keyboardType={keyboardType} secureTextEntry={secureTextEntry} maxLength={maxLength} style={[{ borderWidth: 1, borderColor: '#e9e4ee', backgroundColor: '#fff', borderRadius: 16, minHeight: multiline ? 100 : 48, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: color.ink, fontFamily: 'Nunito', textAlignVertical: multiline ? 'top' : 'center' }, style]} />;
 }
 
 export function Heading({ children, size = 25, style }: { children: React.ReactNode; size?: number; style?: any }) {
