@@ -150,6 +150,17 @@ export async function getMyContentFlags(userId: string): Promise<ContentModerati
 }
 export async function getInquiryParticipants(inquiryId: string): Promise<{ finder_id: string; freelancer_id: string } | null> {
   const result = await assertDb().from('freelancer_inquiries').select('finder_id,freelancer_id').eq('id', inquiryId).maybeSingle();
+  if (result.data) return result.data;
+  // Historical inquiries may not be visible through the table policy, while the
+  // participant-only RPC still exposes the Finder and Freelancer for navigation.
+  const inquiries = unwrap(await assertDb().rpc('my_freelancer_inquiries')) || [];
+  const match = inquiries.find((row: { id: string }) => row.id === inquiryId);
+  if (match) return { finder_id: match.finder_id, freelancer_id: match.freelancer_id };
+  if (result.error) throw new Error(result.error.message);
+  return null;
+}
+export async function getMessageParticipants(messageId: string): Promise<{ finder_id: string; freelancer_id: string } | null> {
+  const result = await assertDb().from('chat_messages').select('finder_id,freelancer_id').eq('id', messageId).maybeSingle();
   if (result.error) throw new Error(result.error.message);
   return result.data;
 }

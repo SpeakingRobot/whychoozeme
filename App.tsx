@@ -174,12 +174,20 @@ export default function App() {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [menu, setMenu] = useState<'place' | 'avatar' | 'sort' | null>(null);
   const [profile, setProfile] = useState<Freelancer | null>(null);
-  const [pendingScrollTarget, setPendingScrollTarget] = useState<string | null>(null);
+  const [pendingScrollTarget, setPendingScrollTarget] = useState<{ id: string; page: Page; profileId?: string } | null>(null);
   useEffect(() => {
     if (!pendingScrollTarget || Platform.OS !== 'web') return;
+    if (page !== pendingScrollTarget.page || (pendingScrollTarget.profileId && profile?.id !== pendingScrollTarget.profileId)) return;
+    let reviewSectionShown = false;
     const scrollToTarget = () => {
-      const target = document.getElementById(pendingScrollTarget);
-      if (!target) return false;
+      const target = document.getElementById(pendingScrollTarget.id);
+      if (!target) {
+        if (!reviewSectionShown && pendingScrollTarget.id.startsWith('review-')) {
+          const section = document.getElementById('profile-reviews');
+          if (section) { section.scrollIntoView({ behavior: 'smooth', block: 'center' }); reviewSectionShown = true; }
+        }
+        return false;
+      }
       target.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setPendingScrollTarget(null);
       return true;
@@ -187,7 +195,7 @@ export default function App() {
     if (scrollToTarget()) return;
     const observer = new MutationObserver(() => { if (scrollToTarget()) observer.disconnect(); });
     observer.observe(document.body, { childList: true, subtree: true });
-    const timeout = setTimeout(() => observer.disconnect(), 6000);
+    const timeout = setTimeout(() => { observer.disconnect(); setPendingScrollTarget(current => current === pendingScrollTarget ? null : current); }, 6000);
     return () => { observer.disconnect(); clearTimeout(timeout); };
   }, [pendingScrollTarget, page, profile?.id]);
   useEffect(() => {
@@ -261,20 +269,21 @@ export default function App() {
   const [safetyReason, setSafetyReason] = useState('');
   const [safetyBusy, setSafetyBusy] = useState(false);
   const [ownProfile, setOwnProfile] = useState<Freelancer | null>(null);
+  const [spaceView, setSpaceView] = useState<'finder' | 'freelancer'>('finder');
   const hasOwnProfile = !!userId && ownProfile?.id === userId;
+  const finderSpace = (!!finder && (!ownProfile || spaceView === 'finder')) || (!ownProfile && (signedInRole || setupRole) === 'finder');
   const completionState: CompletionState = useMemo(() => ({ role: setupRole, finder: !!finder, freelancer: !!ownProfile,
     photo: !!ownProfile?.imageUrl, description: !!ownProfile?.description?.trim() }), [setupRole, finder, ownProfile]);
   const completionSteps = setupSteps(completionState);
   const completedSteps = completionSteps.filter(step => stepComplete(step, completionState)).length;
-  const accountChecklist = ownProfile ? [
+  const accountChecklist = finderSpace ? [
+    { label: 'Finder name', done: !!finder?.name },
+    { label: 'Your area', done: !!finder?.taluka },
+  ] : ownProfile ? [
     { label: 'Profile photo added', done: !!ownProfile.imageUrl },
     { label: 'Basic information', done: !!(ownProfile.name && ownProfile.role && ownProfile.why) },
     { label: 'Skills & expertise', done: !!(ownProfile.category && (ownProfile.description || ownProfile.tags.length)) },
     { label: 'Add portfolio (optional)', done: !!(ownProfile.work.length || ownProfile.links?.length) },
-  ] : finder ? [
-    { label: 'Finder name', done: !!finder.name },
-    { label: 'Your area', done: !!finder.taluka },
-    { label: 'Add a requirement (optional)', done: requests.some(post => post.finderId === userId) },
   ] : [{ label: 'Choose how you use WhyChoozeMe', done: false }];
   const accountPercent = Math.round(accountChecklist.filter(item => item.done).length / accountChecklist.length * 100);
   const [finderName, setFinderName] = useState(''), [finderEmail, setFinderEmail] = useState(''), [finderTaluka, setFinderTaluka] = useState<Taluka>('Tiswadi');
@@ -373,7 +382,7 @@ export default function App() {
     } catch (error) { setNotice((error as Error).message); }
   }, [userId, chatRoute, refreshChatInbox]);
   useEffect(() => { let active = true; live.account().then(({ user }) => { if (active) setUserId(user?.email_confirmed_at ? user.id : null); }).catch(error => setNotice(error.message)).finally(() => { if (active) setAuthReady(true); }); refreshPeople(); live.getCategories().then(setCatalog).catch(error => setNotice(error.message)); live.getProfileFrames().then(setProfileFrames).catch(() => {}); const subscription = live.db?.auth.onAuthStateChange((_event, session) => { setUserId(session?.user?.email_confirmed_at ? session.user.id : null); }); return () => { active = false; subscription?.data.subscription.unsubscribe(); }; }, [refreshPeople]);
-  useEffect(() => { if (!userId) { chatLoadGeneration.current += 1; setFinder(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setChatPairs([]); setRequests([]); setRemoteNotices([]); setUnreadNotices(0); setUnreadChats(0); setChatInbox({}); setAccountFavorites([]); setBlockedFreelancers([]); setProfileStats({ profileViews: 0, saves: 0 }); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } refreshAccount(userId); }, [userId, refreshAccount]);
+  useEffect(() => { if (!userId) { chatLoadGeneration.current += 1; setFinder(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setChatPairs([]); setRequests([]); setRemoteNotices([]); setUnreadNotices(0); setUnreadChats(0); setChatInbox({}); setAccountFavorites([]); setBlockedFreelancers([]); setProfileStats({ profileViews: 0, saves: 0 }); setShowProfileActivity(false); setSpaceView('finder'); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } refreshAccount(userId); }, [userId, refreshAccount]);
   useEffect(() => {
     if (!userId || !accountLoaded || setupLoadError || setupPrompted.current.has(userId)) return;
     setupPrompted.current.add(userId);
@@ -539,6 +548,20 @@ export default function App() {
     }
   };
   const openChats = () => { if (!userId) { openAuth('signIn'); return; } if (page !== 'chats') setChatReturnPage(page); setChatPerson(null); setChatRoute(null); void refreshChatPairs(); void refreshChatInbox(); setPage('chats'); setMenu(null); };
+  const openNotificationChat = (pair: { finder_id: string; freelancer_id: string }) => {
+    if (!userId || ![pair.finder_id, pair.freelancer_id].includes(userId)) { setNotice('This conversation is unavailable.'); return; }
+    const otherId = pair.finder_id === userId ? pair.freelancer_id : pair.finder_id;
+    const partner = allPeople.find(value => value.id === otherId) || finderChatPerson(otherId, chatPairs.find(value => value.id === otherId)?.finderName || 'Finder');
+    if (page !== 'chats') setChatReturnPage(page);
+    setChatRoute({ finderId: pair.finder_id, freelancerId: pair.freelancer_id });
+    setChatPerson(partner);
+    setPage('chats');
+    void live.getChatPartners(userId).then(partners => {
+      setChatPairs(partners);
+      const current = partners.find(value => value.id === otherId);
+      if (current && otherId === pair.finder_id) setChatPerson(person => person?.id === otherId ? finderChatPerson(otherId, current.finderName) : person);
+    }).catch(() => {});
+  };
   const openNotifications = () => { setMenu(null); setDialog('notifications'); };
   const markAllNoticesRead = () => {
     setRemoteNotices(previous => previous.map(item => ({ ...item, seen_at: item.seen_at || new Date().toISOString() })));
@@ -552,25 +575,20 @@ export default function App() {
       void live.markNotificationRead(item.id).catch(error => setNotice((error as Error).message));
     }
     setDialog(null);
-    if (item.kind === 'message') { openChats(); return; }
-    if (item.kind === 'inquiry' && item.related_id && userId) {
+    if ((item.kind === 'message' || item.kind === 'inquiry') && item.related_id && userId) {
       void (async () => {
         try {
-          const pair = await live.getInquiryParticipants(item.related_id!);
-          if (!pair || ![pair.finder_id, pair.freelancer_id].includes(userId)) { openChats(); return; }
-          const partners = await live.getChatPartners(userId);
-          setChatPairs(partners);
-          const otherId = pair.finder_id === userId ? pair.freelancer_id : pair.finder_id;
-          const person = allPeople.find(value => value.id === otherId) || finderChatPerson(otherId, partners.find(value => value.id === otherId)?.finderName || 'Finder');
-          setChatReturnPage(page); setChatRoute({ finderId: pair.finder_id, freelancerId: pair.freelancer_id });
-          setChatPerson(person); setPage('chats');
-        } catch (error) { setNotice((error as Error).message); openChats(); }
+          const pair = item.kind === 'message' ? await live.getMessageParticipants(item.related_id!) : await live.getInquiryParticipants(item.related_id!);
+          if (!pair) { setNotice('This conversation is no longer available.'); return; }
+          openNotificationChat(pair);
+        } catch (error) { setNotice(`Could not open this conversation: ${(error as Error).message}`); }
       })();
       return;
     }
     if ((item.kind === 'application' || item.kind === 'requirement') && item.related_id && userId) {
       void live.getRequests(userId).then(setRequests).catch(error => setNotice(error.message));
-      setPendingScrollTarget(`request-${item.related_id}`);
+      if (item.kind === 'application') void live.getApplications(item.related_id).then(rows => setApplications(previous => ({ ...previous, [item.related_id!]: rows }))).catch(error => setNotice(error.message));
+      setPendingScrollTarget({ id: `request-${item.related_id}`, page: item.kind === 'application' ? 'myPosts' : 'requests' });
       setPage(item.kind === 'application' ? 'myPosts' : 'requests');
       return;
     }
@@ -579,16 +597,16 @@ export default function App() {
         setContentFlags(flags);
         const flagged = flags.find(flag => flag.id === item.related_id);
         if (flagged?.target_kind === 'request' && flagged.target_id) {
-          setPendingScrollTarget(`request-${flagged.target_id}`); setPage('myPosts');
+          setPendingScrollTarget({ id: `request-${flagged.target_id}`, page: 'myPosts' }); setPage('myPosts');
         } else if (ownProfile) {
-          setPendingScrollTarget(flagged?.target_kind === 'media' ? `flag-media-${flagged.target_id}` : flagged?.target_kind === 'service' ? `flag-service-${flagged.target_id}` : 'flag-account');
+          setPendingScrollTarget({ id: flagged?.target_kind === 'media' ? `flag-media-${flagged.target_id}` : flagged?.target_kind === 'service' ? `flag-service-${flagged.target_id}` : 'flag-account', page: 'profile', profileId: ownProfile.id });
           openProfile(ownProfile);
-        } else { setPendingScrollTarget('account-flags'); setPage('account'); }
+        } else { setPendingScrollTarget({ id: 'account-flags', page: 'account' }); setPage('account'); }
       }).catch(error => setNotice(error.message));
       return;
     }
-    if (item.kind === 'profile_save') { setShowProfileActivity(true); setPendingScrollTarget('profile-activity'); setPage('account'); return; }
-    if (item.kind === 'review' && ownProfile) { setPendingScrollTarget('profile-reviews'); openProfile(ownProfile); }
+    if (item.kind === 'profile_save') { setShowProfileActivity(true); setPendingScrollTarget({ id: 'profile-activity', page: 'account' }); setPage('account'); return; }
+    if (item.kind === 'review' && ownProfile) { setPendingScrollTarget({ id: item.related_id ? `review-${item.related_id}` : 'profile-reviews', page: 'profile', profileId: ownProfile.id }); openProfile(ownProfile); }
   };
   const closeChats = () => { setPage(chatReturnPage === 'chats' ? 'home' : chatReturnPage); setChatPerson(null); };
   const openNewRequest = () => { if (!userId) { openAuth('signIn'); return; } if (!finder) { setFinderName(ownProfile?.name || finderName); setFinderTaluka(ownProfile?.taluka || finderTaluka); } setDialog(finder ? 'request' : 'finder'); setMenu(null); };
@@ -781,7 +799,7 @@ export default function App() {
     { text: "Let's make a deal →", style: { bottom: 21, left: '39%' }, tilt: -6, tint: '#7851ba', delay: -4.6 },
     { text: 'Need a tutor?', style: { bottom: 28, right: '4%' }, tilt: 6, tint: '#567b7c', delay: -2.1 },
   ];
-  const mobileTabs = [{ id: 'home', label: 'People', icon: 'people' }, { id: 'search', label: 'Search', icon: 'search' }, { id: 'map', label: 'Map', icon: 'map' }, { id: 'account', label: 'Profile', icon: 'profile' }] as const;
+  const mobileTabs = [{ id: 'home', label: 'People', icon: 'people' }, { id: 'search', label: 'Search', icon: 'search' }, { id: 'map', label: 'Map', icon: 'map' }, { id: 'account', label: 'My space', icon: 'profile' }] as const;
   const activeMobileTab = page === 'profile' ? detailReturnPage : page === 'collection' ? 'home' : ['requests', 'admin', 'finderHub', 'freelancerHub', 'myPosts', 'newRequest', 'chats'].includes(page) ? 'account' : page;
   const desktopMenuKeys = ['creative', 'lifestyle', 'learning', 'more'];
   const primaryMenuCount = tablet ? 0 : screenWidth >= 1250 ? 4 : 3;
@@ -872,27 +890,29 @@ export default function App() {
     {page === 'chats' && userId && <ChatWorkspace viewerId={userId} compact={compact} people={chatPerson && !chatPeople.some(person => person.id === chatPerson.id) ? [chatPerson, ...chatPeople] : chatPeople} selected={chatPerson ? allPeople.find(person => person.id === chatPerson.id) || chatPerson : null} messages={displayMessages} inbox={chatInbox} unreadTotal={unreadChats} draft={chatDraft} role={chatRoute?.freelancerId === userId ? 'freelancer' : 'finder'} messageKey={messageKey} onSelect={selectChat} onBack={() => setChatPerson(null)} onClose={closeChats} onWhatsappSetup={needsWhatsapp ? openWhatsappPrompt : undefined} blocked={!!chatRoute && blockedFreelancers.includes(chatRoute.freelancerId)} onSafety={openSafety} onDraft={setChatDraft} onSend={sendMessage} onAttach={attachChatFile} attaching={chatFileBusy} />}
     {page === 'account' && <View style={{ width: '100%', maxWidth: 1230, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 29, paddingBottom: 60 }}>
       <Heading size={compact ? 29 : 34}>My space<Text style={{ color: color.coral }}> ✦</Text></Heading><T style={{ color: '#6880a8', marginTop: 5, marginBottom: 22 }}>Manage your profile, requirements and conversations.</T>
-      <Pressable accessibilityRole="button" accessibilityLabel="Open your profile" onPress={() => ownProfile ? openProfile(ownProfile) : startSetup()} style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#d5e2ff', borderRadius: 19, padding: compact ? 17 : 23, marginBottom: 18, flexDirection: 'row', alignItems: 'center', gap: 17, shadowColor: '#5b6fb0', shadowOpacity: .04, shadowRadius: 12 }}><View style={{ width: 69, height: 69, borderRadius: 35, backgroundColor: '#f3e5ff', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>{ownProfile?.imageUrl ? <Image source={{ uri: ownProfile.imageUrl }} style={{ width: 69, height: 69, borderRadius: 35 }} /> : <TabIcon name="profile" color={color.purple} size={30} />}</View><View style={{ flex: 1 }}><T style={{ fontSize: 20, fontWeight: '900' }}>{finder?.name || ownProfile?.name || accountDisplayName || 'Visitor'}</T><T style={{ color: '#6880a8', fontSize: 13, marginTop: 3 }}>{userId ? `Signed in as ${finder && ownProfile ? 'Finder & Freelancer' : ownProfile ? 'Freelancer' : finder ? 'Finder' : (signedInRole || setupRole) === 'freelancer' ? 'Freelancer (setup pending)' : (signedInRole || setupRole) === 'finder' ? 'Finder (setup pending)' : 'a member'}${admin ? ' · Admin' : ''} · Goa` : 'Sign in to connect'}</T></View><T style={{ color: '#7690bd', fontSize: 28 }}>›</T></Pressable>
+      {!!finder && !!ownProfile && <View style={{ flexDirection: 'row', gap: 9, marginBottom: 17 }}><Button outline={!finderSpace} flat onPress={() => { setSpaceView('finder'); setShowProfileActivity(false); }} style={{ minHeight: 38 }}>Finder space</Button><Button outline={finderSpace} flat onPress={() => { setSpaceView('freelancer'); setShowProfileActivity(false); }} style={{ minHeight: 38 }}>Freelancer space</Button></View>}
+      <Pressable accessibilityRole="button" accessibilityLabel={finderSpace ? 'Edit Finder details' : 'Open your profile'} onPress={() => finderSpace ? enterFinder() : ownProfile ? openProfile(ownProfile) : startSetup()} style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#d5e2ff', borderRadius: 19, padding: compact ? 17 : 23, marginBottom: 18, flexDirection: 'row', alignItems: 'center', gap: 17, shadowColor: '#5b6fb0', shadowOpacity: .04, shadowRadius: 12 }}><View style={{ width: 69, height: 69, borderRadius: 35, backgroundColor: '#f3e5ff', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>{ownProfile?.imageUrl && !finderSpace ? <Image source={{ uri: ownProfile.imageUrl }} style={{ width: 69, height: 69, borderRadius: 35 }} /> : <TabIcon name="profile" color={color.purple} size={30} />}</View><View style={{ flex: 1 }}><T style={{ fontSize: 20, fontWeight: '900' }}>{finderSpace ? finder?.name || accountDisplayName || 'Finder' : ownProfile?.name || finder?.name || accountDisplayName || 'Visitor'}</T><T style={{ color: '#6880a8', fontSize: 13, marginTop: 3 }}>{userId ? `Signed in as ${finder && ownProfile ? 'Finder & Freelancer' : ownProfile ? 'Freelancer' : finder ? 'Finder' : (signedInRole || setupRole) === 'freelancer' ? 'Freelancer (setup pending)' : (signedInRole || setupRole) === 'finder' ? 'Finder (setup pending)' : 'a member'}${admin ? ' · Admin' : ''} · Goa` : 'Sign in to connect'}</T></View><T style={{ color: '#7690bd', fontSize: 28 }}>›</T></Pressable>
       {!userId && <Button onPress={enterFinder} style={{ marginBottom: 16 }}>Create an account or sign in</Button>}
       {userId && <View style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#cfe0ff', borderRadius: 21, padding: compact ? 18 : 26, marginBottom: 18, flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'stretch' : 'center', gap: compact ? 18 : 28, shadowColor: '#6b56c6', shadowOpacity: .05, shadowRadius: 14 }}>
         <View style={{ alignItems: 'center', justifyContent: 'center' }}><CompletionRing percent={accountPercent} /></View>
-        <View style={{ flex: 1 }}><Heading size={22}>{accountPercent === 100 ? 'Your Profile Is Complete! ✦' : 'Complete your account ✦'}</Heading><T style={{ color: '#6880a8', marginTop: 5, lineHeight: 21 }}>{accountPercent === 100 ? 'Your profile is ready. Keep your information and portfolio up to date.' : 'A complete profile helps people find you and connect with confidence.'}</T><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 16 }}><Button onPress={() => accountPercent === 100 && ownProfile ? openProfile(ownProfile) : ownProfile ? editFreelancerProfile() : startSetup()} style={{ minHeight: 40 }}>{accountPercent === 100 && ownProfile ? 'Preview profile' : 'Finish profile'}</Button></View>{!ownProfile && <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}><Button outline={setupRole !== 'finder'} flat onPress={() => setSetupRole('finder')} style={{ minHeight: 33 }}>Finder</Button><Button outline={setupRole !== 'freelancer'} flat onPress={() => setSetupRole('freelancer')} style={{ minHeight: 33 }}>Freelancer</Button></View>}</View>
+        <View style={{ flex: 1 }}><Heading size={22}>{accountPercent === 100 ? 'Your Profile Is Complete! ✦' : 'Complete your account ✦'}</Heading><T style={{ color: '#6880a8', marginTop: 5, lineHeight: 21 }}>{finderSpace ? accountPercent === 100 ? 'Your Finder details are ready. Keep your name and area up to date.' : 'Add your name and area so freelancers know who is contacting them.' : accountPercent === 100 ? 'Your profile is ready. Keep your information and portfolio up to date.' : 'A complete profile helps people find you and connect with confidence.'}</T><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 16 }}><Button onPress={() => finderSpace ? enterFinder() : accountPercent === 100 && ownProfile ? openProfile(ownProfile) : ownProfile ? editFreelancerProfile() : startSetup()} style={{ minHeight: 40 }}>{finderSpace ? finder ? 'Edit Finder details' : 'Finish Finder details' : accountPercent === 100 && ownProfile ? 'Preview profile' : 'Finish profile'}</Button></View>{!finderSpace && !ownProfile && <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}><Button outline={setupRole !== 'finder'} flat onPress={() => setSetupRole('finder')} style={{ minHeight: 33 }}>Finder</Button><Button outline={setupRole !== 'freelancer'} flat onPress={() => setSetupRole('freelancer')} style={{ minHeight: 33 }}>Freelancer</Button></View>}</View>
         <View style={{ flex: compact ? undefined : 1, borderLeftWidth: compact ? 0 : 1, borderTopWidth: compact ? 1 : 0, borderColor: '#e9edf7', paddingLeft: compact ? 0 : 25, paddingTop: compact ? 14 : 0, gap: 9 }}>{accountChecklist.map(item => <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><View style={{ width: 19, height: 19, borderRadius: 10, backgroundColor: item.done ? '#12ab76' : '#fff', borderWidth: item.done ? 0 : 2, borderColor: '#8da3ca', alignItems: 'center', justifyContent: 'center' }}><T style={{ color: '#fff', fontSize: 12, fontWeight: '900' }}>{item.done ? '✓' : ''}</T></View><T style={{ color: '#536c94', fontSize: 13 }}>{item.label}</T></View>)}{!!setupLoadError && <T style={{ color: color.coral, fontSize: 12 }}>{setupLoadError}</T>}</View>
       </View>}
-      {needsWhatsapp && <View style={{ backgroundColor: '#edfbf5', borderWidth: 1, borderColor: '#b6ecd4', borderRadius: 19, padding: compact ? 17 : 21, marginBottom: 18, flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'flex-start' : 'center', gap: 16 }}><View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: '#24c778', alignItems: 'center', justifyContent: 'center' }}><T style={{ color: '#fff', fontSize: 30 }}>◉</T></View><View style={{ flex: 1 }}><T style={{ color: '#0a5640', fontSize: 17, fontWeight: '900' }}>Let clients reach you on WhatsApp</T><T style={{ color: '#4d7d6b', fontSize: 13, marginTop: 3 }}>Add a number to show a WhatsApp button on your profile and in chats.</T></View><Button outline flat onPress={openWhatsappPrompt}>Add WhatsApp number →</Button></View>}
+      {!finderSpace && needsWhatsapp && <View style={{ backgroundColor: '#edfbf5', borderWidth: 1, borderColor: '#b6ecd4', borderRadius: 19, padding: compact ? 17 : 21, marginBottom: 18, flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'flex-start' : 'center', gap: 16 }}><View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: '#24c778', alignItems: 'center', justifyContent: 'center' }}><T style={{ color: '#fff', fontSize: 30 }}>◉</T></View><View style={{ flex: 1 }}><T style={{ color: '#0a5640', fontSize: 17, fontWeight: '900' }}>Let clients reach you on WhatsApp</T><T style={{ color: '#4d7d6b', fontSize: 13, marginTop: 3 }}>Add a number to show a WhatsApp button on your profile and in chats.</T></View><Button outline flat onPress={openWhatsappPrompt}>Add WhatsApp number →</Button></View>}
       {!!contentFlags.length && <View nativeID="account-flags" style={{ backgroundColor: '#fff4f6', borderWidth: 1, borderColor: '#f2cbd4', borderRadius: 18, padding: 17, marginBottom: 18 }}><T style={{ color: '#a32f4d', fontSize: 16, fontWeight: '900' }}>{contentFlags.some(flag => flag.target_kind === 'account') ? 'Your account is under review' : 'Content under review'}</T><T style={{ color: '#79495a', fontSize: 12, marginTop: 4 }}>Review the flagged items and the admin’s reason below. Flagged listings stay off public pages until the review is resolved; an account flag alone does not suspend your account.</T>{contentFlags.map(flag => <T key={flag.id} style={{ color: '#79495a', fontSize: 12, marginTop: 9 }}>• {flag.target_kind === 'account' ? 'Account' : flag.target_title || flag.target_kind}: {flag.reason}</T>)}</View>}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
-        <ActionTile icon="📄" title="Your profile activity" detail="See profile views and people who saved you." tone="#e4f2ff" onPress={() => { setShowProfileActivity(true); setPendingScrollTarget('profile-activity'); }} />
+        <ActionTile icon="📄" title={finderSpace ? 'Your request activity' : 'Your profile activity'} detail={finderSpace ? 'See your requirements and the freelancers who approached them.' : 'See profile views and people who saved you.'} tone="#e4f2ff" onPress={() => { setShowProfileActivity(true); setPendingScrollTarget({ id: finderSpace ? 'request-activity' : 'profile-activity', page: 'account' }); }} />
         <ActionTile icon="📋" title="My requirements" detail="Follow your posted requirements and responses." tone="#f0e8ff" onPress={() => setPage('myPosts')} />
-        <ActionTile icon="✦" title={ownProfile ? 'Edit freelancer profile' : 'Create a freelancer profile'} detail="Share your skills, story and portfolio." tone="#ddf8ed" onPress={editFreelancerProfile} />
+        {!finderSpace && <ActionTile icon="✦" title={ownProfile ? 'Edit freelancer profile' : 'Create a freelancer profile'} detail="Share your skills, story and portfolio." tone="#ddf8ed" onPress={editFreelancerProfile} />}
         <ActionTile icon="✎" title="Post a requirement" detail="Tell us what you need and connect with local talent." tone="#fff0e5" onPress={openNewRequest} />
-        <ActionTile icon="◉" title={ownProfile ? 'My freelancer profile' : finder ? 'My Finder profile' : 'Create a Finder profile'} detail="See what other people can learn about you." tone="#e5f7f8" onPress={() => ownProfile ? openProfile(ownProfile) : enterFinder()} />
-        <ActionTile icon="⌕" title="Browse requirements" detail="Find projects that match your skills." tone="#eee7ff" onPress={() => setPage('requests')} />
+        <ActionTile icon="◉" title={finderSpace ? 'My Finder details' : ownProfile ? 'My freelancer profile' : 'Create a Finder profile'} detail={finderSpace ? 'Update the name and area shown when you contact freelancers.' : 'See what other people can learn about you.'} tone="#e5f7f8" onPress={() => finderSpace ? enterFinder() : ownProfile ? openProfile(ownProfile) : enterFinder()} />
+        <ActionTile icon="⌕" title={finderSpace ? 'Browse creatives' : 'Browse requirements'} detail={finderSpace ? 'Find freelancers whose skills match your needs.' : 'Find projects that match your skills.'} tone="#eee7ff" onPress={() => finderSpace ? goHome() : setPage('requests')} />
+        {finderSpace && <ActionTile icon="✦" title="Create a freelancer profile" detail="Offer your own skills alongside your Finder account." tone="#ddf8ed" onPress={editFreelancerProfile} />}
         <ActionTile icon="☏" title="Chats" detail="Message people you have connected with." tone="#ffe8f1" wide onPress={openChats} />
         <ActionTile icon="♥" title="Saved creatives" detail="People you want to revisit." tone="#ffe5e9" wide onPress={() => { setCategory('all'); setSearch(''); setSearchDraft(''); setSavedOnly(true); setRadius('All Goa'); setPage('search'); }} />
         {admin && <ActionTile icon="⚑" title="Admin console" detail="Manage users, listings and moderation." tone="#e6edff" wide onPress={openAdminConsole} />}
       </View>
-      {showProfileActivity && <View nativeID="profile-activity" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#d9e7ff', borderRadius: 19, padding: 21, marginTop: 16 }}><Heading size={19}>Your profile activity</Heading><T style={{ color: color.muted, fontSize: 12, marginTop: 3 }}>Signed-in visitors are counted once per day.</T><View style={{ flexDirection: 'row', gap: 12, marginTop: 13 }}><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#f4efff', padding: 14 }}><T style={{ color: color.purple, fontSize: 24, fontWeight: '900' }}>{profileStats.profileViews}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>Profile views</T></View><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#fff0f3', padding: 14 }}><T style={{ color: color.coral, fontSize: 24, fontWeight: '900' }}>{profileStats.saves}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>People who saved you</T></View></View></View>}
+      {showProfileActivity && (finderSpace ? <View nativeID="request-activity" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#d9e7ff', borderRadius: 19, padding: 21, marginTop: 16 }}><Heading size={19}>Your request activity</Heading><T style={{ color: color.muted, fontSize: 12, marginTop: 3 }}>See how freelancers are responding to your requirements.</T><View style={{ flexDirection: 'row', gap: 12, marginTop: 13 }}><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#f4efff', padding: 14 }}><T style={{ color: color.purple, fontSize: 24, fontWeight: '900' }}>{finderPosts.length}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>Requirements posted</T></View><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#fff0f3', padding: 14 }}><T style={{ color: color.coral, fontSize: 24, fontWeight: '900' }}>{finderPosts.reduce((total, post) => total + (applications[post.id] || []).length, 0)}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>Freelancer approaches</T></View></View></View> : <View nativeID="profile-activity" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#d9e7ff', borderRadius: 19, padding: 21, marginTop: 16 }}><Heading size={19}>Your profile activity</Heading><T style={{ color: color.muted, fontSize: 12, marginTop: 3 }}>Signed-in visitors are counted once per day.</T><View style={{ flexDirection: 'row', gap: 12, marginTop: 13 }}><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#f4efff', padding: 14 }}><T style={{ color: color.purple, fontSize: 24, fontWeight: '900' }}>{profileStats.profileViews}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>Profile views</T></View><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#fff0f3', padding: 14 }}><T style={{ color: color.coral, fontSize: 24, fontWeight: '900' }}>{profileStats.saves}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>People who saved you</T></View></View></View>)}
       {userId && <Pressable accessibilityRole="button" onPress={signOut} style={{ paddingVertical: 20, alignItems: 'center' }}><T style={{ color: color.muted, fontWeight: '900' }}>Sign out</T></Pressable>}
     </View>}
     {page === 'myPosts' && <View style={{ width: '100%', maxWidth: 1050, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 29, paddingBottom: 60 }}><Pressable onPress={() => setPage('account')}><T style={{ color: color.purple, fontWeight: '900' }}>← My space</T></Pressable><View style={{ flexDirection: compact ? 'column' : 'row', justifyContent: 'space-between', alignItems: compact ? 'flex-start' : 'center', gap: 13, marginTop: 17, marginBottom: 20 }}><View><Heading size={30}>My requirements 📋</Heading><T style={{ color: color.muted, marginTop: 4 }}>See your posts and the freelancers who approached you.</T></View><Button onPress={openNewRequest}>Post a requirement</Button></View>{finderPosts.map(post => <View key={post.id} nativeID={`request-${post.id}`} style={{ backgroundColor: '#fff', borderRadius: 20, padding: 21, marginBottom: 12, borderWidth: 1, borderColor: color.line }}><TinyTag style={{ alignSelf: 'flex-start', marginBottom: 11 }}>YOUR POST</TinyTag>{post.moderationStatus === 'under_review' && <View style={{ backgroundColor: '#fff0f3', borderWidth: 1, borderColor: '#f5cbd6', borderRadius: 12, padding: 12, marginBottom: 12 }}><T style={{ color: '#b63756', fontWeight: '900' }}>Under review</T><T style={{ color: '#89546a', fontSize: 12, marginTop: 3 }}>This requirement is hidden from public listings while the admin reviews it.</T>{contentFlags.filter(flag => flag.target_kind === 'request' && flag.target_id === post.id).map(flag => <T key={flag.id} style={{ color: '#89546a', fontSize: 12, marginTop: 4 }}>Reason: {flag.reason} · {new Date(flag.created_at).toLocaleDateString()}</T>)}</View>}<Heading size={21}>{post.title}</Heading><T style={{ color: color.muted, marginTop: 5 }}>{post.taluka} · {catalog.find(item => item.id === post.category)?.label || post.category}</T><T style={{ marginTop: 11 }}>{post.details}</T><T style={{ color: color.purple, marginTop: 16, fontWeight: '900', fontSize: 15 }}>Approached freelancers ({(applications[post.id] || []).length})</T>{(applications[post.id] || []).length === 0 && <T style={{ color: color.muted, marginTop: 5 }}>Matching freelancers will appear here when they approach you.</T>}{(applications[post.id] || []).map(item => { const person = allPeople.find(value => value.id === item.freelancer_id); const connected = chatPairs.some(row => row.finderId === userId && row.freelancerId === item.freelancer_id); return <View key={item.id} style={{ marginTop: 9, padding: 12, backgroundColor: '#fbf9ff', borderWidth: 1, borderColor: '#e9e1f4', borderRadius: 16 }}><View style={{ flexDirection: 'row', gap: 11, alignItems: 'center' }}>{person && <View style={{ width: 58 }}><Portrait index={person.image} imageUrl={person.imageUrl} name={person.name} height={58} radius={12} /></View>}<View style={{ flex: 1 }}><T style={{ fontWeight: '900' }}>{person?.name || 'Freelancer'}</T><T style={{ color: color.muted, fontSize: 12 }}>{person ? `${person.role} · ${person.taluka}` : 'Approached your request'}</T></View><T style={{ color: connected ? '#26846c' : color.purple, fontSize: 12, fontWeight: '900' }}>{connected ? 'Connected' : item.status === 'declined' ? 'Declined' : 'Approached'}</T></View><T style={{ marginTop: 8 }} numberOfLines={3}>{item.note}</T>{person && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 11 }}><Button outline flat onPress={() => openProfile(person)} style={{ minHeight: 38 }}>View profile</Button>{item.status !== 'declined' && <Button flat onPress={() => openContact(person)} style={{ minHeight: 38 }}>{connected ? 'Open chat →' : 'Connect →'}</Button>}</View>}</View>; })}</View>)}</View>}
