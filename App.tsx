@@ -644,7 +644,7 @@ export default function App() {
       return;
     }
     if (item.kind === 'profile_save') { setShowProfileActivity(true); setPendingScrollTarget({ id: 'profile-activity', page: 'account' }); setPage('account'); return; }
-    if (item.kind === 'review' && ownProfile) { setPendingScrollTarget({ id: item.related_id ? `review-${item.related_id}` : 'profile-reviews', page: 'profile', profileId: ownProfile.id }); openProfile(ownProfile); }
+    if (item.kind === 'review' && ownProfile) { setPendingScrollTarget({ id: 'profile-reviews', page: 'profile', profileId: ownProfile.id }); openProfile(ownProfile); }
   };
   const closeChats = () => { setPage(chatReturnPage === 'chats' ? 'home' : chatReturnPage); setChatPerson(null); };
   const openNewRequest = () => { if (!userId) { openAuth('signIn'); return; } if (!finder) { setFinderName(ownProfile?.name || finderName); setFinderTaluka(ownProfile?.taluka || finderTaluka); } setDialog(finder ? 'request' : 'finder'); setMenu(null); };
