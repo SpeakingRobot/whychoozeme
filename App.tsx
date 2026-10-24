@@ -427,6 +427,10 @@ export default function App() {
     const actual = allPeople.find(person => person.id === id);
     return [id, actual || finderChatPerson(id, item.finderName, item.finderImageUrl)];
   })).values()].sort((a, b) => (chatInbox[b.id]?.lastAt || 0) - (chatInbox[a.id]?.lastAt || 0));
+  const activeChatId = chatRoute && userId ? chatRoute.finderId === userId ? chatRoute.freelancerId : chatRoute.finderId : null;
+  const activeChatPerson = activeChatId
+    ? allPeople.find(person => person.id === activeChatId) || (chatPerson?.id === activeChatId ? chatPerson : null) || chatPeople.find(person => person.id === activeChatId) || null
+    : null;
   const displayMessages = messages;
   const center = place !== 'Goa' ? talukaCenters[place as Taluka] : null;
   const visiblePeople = useMemo(() => { const term = search.trim().toLowerCase(); let list = allPeople.filter(person => { const cat = category === 'all' || person.category === category || (category === 'other' && !catalog.some(item => item.id === person.category)); const text = !term || [person.name, person.role, person.place, person.category, ...person.tags].join(' ').toLowerCase().includes(term); const km = center ? distanceKm(center, person) : 0; const local = !center || radius === 'All Goa' || (radius === 'Local' ? person.taluka === place : km <= (radius === '10 km' ? 10 : 25)); return cat && text && local; }); if (sort === 'Top rated') list = list.sort((a, b) => b.rating - a.rating); else if (sort === 'Most reviewed') list = list.sort((a, b) => b.reviews - a.reviews); else if (center) list = list.sort((a, b) => distanceKm(center, a) - distanceKm(center, b)); return center ? list.map(person => ({ ...person, distance: `${distanceKm(center, person).toFixed(1)} km` })) : list; }, [allPeople, catalog, category, center, search, place, radius, sort]);
@@ -573,19 +577,18 @@ export default function App() {
     }
   };
   const openChats = () => { if (!userId) { openAuth('signIn'); return; } if (page !== 'chats') setChatReturnPage(page); setChatPerson(null); setChatRoute(null); void refreshChatPairs(); void refreshChatInbox(); setPage('chats'); setMenu(null); };
-  const openNotificationChat = (pair: { finder_id: string; freelancer_id: string }) => {
+  const openNotificationChat = async (pair: { finder_id: string; freelancer_id: string }) => {
     if (!userId || ![pair.finder_id, pair.freelancer_id].includes(userId)) { setNotice('This conversation is unavailable.'); return; }
     const otherId = pair.finder_id === userId ? pair.freelancer_id : pair.finder_id;
-    const partner = allPeople.find(value => value.id === otherId) || finderChatPerson(otherId, chatPairs.find(value => value.id === otherId)?.finderName || 'Finder', chatPairs.find(value => value.id === otherId)?.finderImageUrl);
+    let partners = chatPairs;
+    try { partners = await live.getChatPartners(userId); setChatPairs(partners); }
+    catch (error) { setNotice(`Could not refresh conversations: ${(error as Error).message}`); }
+    const finderPartner = partners.find(value => value.id === otherId);
+    const partner = allPeople.find(value => value.id === otherId) || finderChatPerson(otherId, finderPartner?.finderName || 'Finder', finderPartner?.finderImageUrl);
     if (page !== 'chats') setChatReturnPage(page);
     setChatRoute({ finderId: pair.finder_id, freelancerId: pair.freelancer_id });
     setChatPerson(partner);
     setPage('chats');
-    void live.getChatPartners(userId).then(partners => {
-      setChatPairs(partners);
-      const current = partners.find(value => value.id === otherId);
-      if (current && otherId === pair.finder_id) setChatPerson(person => person?.id === otherId ? finderChatPerson(otherId, current.finderName, current.finderImageUrl) : person);
-    }).catch(() => {});
   };
   const openNotifications = () => { setMenu(null); setDialog('notifications'); };
   const markAllNoticesRead = () => {
@@ -605,16 +608,26 @@ export default function App() {
         try {
           const pair = item.kind === 'message' ? await live.getMessageParticipants(item.related_id!) : await live.getInquiryParticipants(item.related_id!);
           if (!pair) { setNotice('This conversation is no longer available.'); return; }
-          openNotificationChat(pair);
+          await openNotificationChat(pair);
         } catch (error) { setNotice(`Could not open this conversation: ${(error as Error).message}`); }
       })();
       return;
     }
     if ((item.kind === 'application' || item.kind === 'requirement') && item.related_id && userId) {
-      void live.getRequests(userId).then(setRequests).catch(error => setNotice(error.message));
-      if (item.kind === 'application') void live.getApplications(item.related_id).then(rows => setApplications(previous => ({ ...previous, [item.related_id!]: rows }))).catch(error => setNotice(error.message));
-      setPendingScrollTarget({ id: `request-${item.related_id}`, page: item.kind === 'application' ? 'myPosts' : 'requests' });
-      setPage(item.kind === 'application' ? 'myPosts' : 'requests');
+      const requestId = item.related_id;
+      void (async () => {
+        try {
+          const posts = await live.getRequests(userId);
+          if (!posts.some(post => post.id === requestId)) { setNotice('This requirement is no longer available.'); return; }
+          setRequests(posts);
+          if (item.kind === 'application') void live.getApplications(requestId)
+            .then(approaches => setApplications(previous => ({ ...previous, [requestId]: approaches })))
+            .catch(error => setNotice(`Could not refresh approaches: ${(error as Error).message}`));
+          const destination = item.kind === 'application' ? 'myPosts' : 'requests';
+          setPendingScrollTarget({ id: `request-${requestId}`, page: destination });
+          setPage(destination);
+        } catch (error) { setNotice(`Could not open this requirement: ${(error as Error).message}`); }
+      })();
       return;
     }
     if (item.kind === 'admin_flag' && userId) {
@@ -919,7 +932,7 @@ export default function App() {
       {!visiblePeople.length && <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 29 }}><Heading size={21}>No matches yet</Heading><T style={{ color: color.muted, marginTop: 6 }}>Try another specialty or a wider location.</T><Button onPress={() => openCollection('All creatives', 'all')} style={{ alignSelf: 'flex-start', marginTop: 13 }}>See all creatives</Button></View>}
     </View>}
     {page === 'map' && <View style={{ width: '100%', maxWidth: 1500, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: compact ? 20 : 25, paddingBottom: 60 }}>{!compact && <Pressable onPress={goHome}><T style={{ color: color.purple, fontWeight: '900' }}>← Back to freelancers</T></Pressable>}{compact && <View style={{ zIndex: 20 }}>{mobileLocationPicker}</View>}<View style={{ marginTop: 15, marginBottom: 15 }}><Heading size={compact ? 27 : 30}>Creatives around {place} 📍</Heading><T style={{ color: color.muted, marginTop: 4 }}>{'Tap a pin to view a profile.'}</T></View><ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }} contentContainerStyle={{ gap: 8 }}>{['Local', '10 km', '25 km', 'All Goa'].map(value => <Pressable key={value} onPress={() => setRadius(value)} style={{ paddingHorizontal: 17, paddingVertical: 9, borderRadius: 18, backgroundColor: radius === value ? color.purple : '#fff', borderWidth: 1, borderColor: radius === value ? color.purple : color.line }}><T style={{ color: radius === value ? '#fff' : color.ink, fontSize: 13, fontWeight: '900' }}>{value}</T></Pressable>)}</ScrollView><MapCanvas people={mapPeople} compact={compact} place={place} radius={radius} onSelect={openProfile} /><View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 13 }}><Text style={{ color: color.purple }}>●</Text><T style={{ fontSize: 13, color: color.muted }}>{mapPeople.length} creatives · Locations are approximate</T></View></View>}
-    {page === 'chats' && userId && <ChatWorkspace viewerId={userId} compact={compact} people={chatPerson && !chatPeople.some(person => person.id === chatPerson.id) ? [chatPerson, ...chatPeople] : chatPeople} selected={chatPerson ? allPeople.find(person => person.id === chatPerson.id) || chatPerson : null} messages={displayMessages} inbox={chatInbox} unreadTotal={unreadChats} draft={chatDraft} role={chatRoute?.freelancerId === userId ? 'freelancer' : 'finder'} messageKey={messageKey} onSelect={selectChat} onBack={() => setChatPerson(null)} onClose={closeChats} onWhatsappSetup={needsWhatsapp ? openWhatsappPrompt : undefined} blocked={!!chatRoute && blockedFreelancers.includes(chatRoute.freelancerId)} onSafety={openSafety} onDraft={setChatDraft} onSend={sendMessage} onAttach={attachChatFile} attaching={chatFileBusy} />}
+    {page === 'chats' && userId && <ChatWorkspace viewerId={userId} compact={compact} people={activeChatPerson && !chatPeople.some(person => person.id === activeChatPerson.id) ? [activeChatPerson, ...chatPeople] : chatPeople} selected={activeChatPerson} messages={displayMessages} inbox={chatInbox} unreadTotal={unreadChats} draft={chatDraft} role={chatRoute?.freelancerId === userId ? 'freelancer' : 'finder'} messageKey={messageKey} onSelect={selectChat} onBack={() => { setChatRoute(null); setChatPerson(null); }} onClose={closeChats} onWhatsappSetup={needsWhatsapp ? openWhatsappPrompt : undefined} blocked={!!chatRoute && blockedFreelancers.includes(chatRoute.freelancerId)} onSafety={openSafety} onDraft={setChatDraft} onSend={sendMessage} onAttach={attachChatFile} attaching={chatFileBusy} />}
     {page === 'account' && <View style={{ width: '100%', maxWidth: 1230, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 29, paddingBottom: 60 }}>
       <Heading size={compact ? 29 : 34}>My space<Text style={{ color: color.coral }}> ✦</Text></Heading><T style={{ color: '#6880a8', marginTop: 5, marginBottom: 22 }}>Manage your profile, requirements and conversations.</T>
       {!!finder && !!ownProfile && <View style={{ flexDirection: 'row', gap: 9, marginBottom: 17 }}><Button outline={!finderSpace} flat onPress={() => { setSpaceView('finder'); setShowProfileActivity(false); }} style={{ minHeight: 38 }}>Finder space</Button><Button outline={finderSpace} flat onPress={() => { setSpaceView('freelancer'); setShowProfileActivity(false); }} style={{ minHeight: 38 }}>Freelancer space</Button></View>}
