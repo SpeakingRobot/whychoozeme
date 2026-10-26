@@ -267,6 +267,8 @@ export default function App() {
   const [profileFrames, setProfileFrames] = useState<ProfileFrameDesign[]>([]);
   const [contentFlags, setContentFlags] = useState<live.ContentModerationFlag[]>([]);
   const [blockedFreelancers, setBlockedFreelancers] = useState<string[]>([]);
+  const [blockedListLoaded, setBlockedListLoaded] = useState(false);
+  const [unblockingId, setUnblockingId] = useState<string | null>(null);
   const [safetyTarget, setSafetyTarget] = useState<Freelancer | null>(null);
   const [safetyReason, setSafetyReason] = useState('');
   const [safetyBusy, setSafetyBusy] = useState(false);
@@ -330,6 +332,8 @@ export default function App() {
   const refreshAccount = useCallback(async (id: string) => {
     try {
       setAccountLoaded(false);
+      try { setBlockedFreelancers(await live.getBlockedFreelancers()); setBlockedListLoaded(true); }
+      catch { setBlockedListLoaded(false); setNotice('Could not load blocked accounts. Refresh the page to try again.'); }
       const people = await live.getFreelancers(); setLivePeople(people); setPeopleLoadError(''); setPeopleLoaded(true); setOwnProfile(people.find(person => person.id === id) || null);
       const auth = await live.account();
       const meta = auth.user?.user_metadata;
@@ -354,7 +358,6 @@ export default function App() {
       setApplications(Object.fromEntries(groups));
       setRemoteNotices(await live.getNotifications());
       setUnreadNotices(await live.getUnreadNotificationCount());
-      setBlockedFreelancers(await live.getBlockedFreelancers().catch(() => []));
       setAccountFavorites(await live.getSavedProfiles());
       if (people.some(person => person.id === id)) setProfileStats(await live.getMyProfileStats());
       setChatPairs(await live.getChatPartners(id));
@@ -388,7 +391,7 @@ export default function App() {
     } catch (error) { setNotice((error as Error).message); }
   }, [userId, chatRoute, refreshChatInbox]);
   useEffect(() => { let active = true; live.account().then(({ user }) => { if (active) setUserId(user?.email_confirmed_at ? user.id : null); }).catch(error => setNotice(error.message)).finally(() => { if (active) setAuthReady(true); }); refreshPeople(); live.getCategories().then(setCatalog).catch(error => setNotice(error.message)); live.getProfileFrames().then(setProfileFrames).catch(() => {}); const subscription = live.db?.auth.onAuthStateChange((_event, session) => { setUserId(session?.user?.email_confirmed_at ? session.user.id : null); }); return () => { active = false; subscription?.data.subscription.unsubscribe(); }; }, [refreshPeople]);
-  useEffect(() => { if (!userId) { chatLoadGeneration.current += 1; setFinder(null); setFinderImageFile(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setChatPairs([]); setRequests([]); setRemoteNotices([]); setUnreadNotices(0); setUnreadChats(0); setChatInbox({}); setAccountFavorites([]); setBlockedFreelancers([]); setProfileStats({ profileViews: 0, saves: 0 }); setShowProfileActivity(false); setSpaceView(null); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } setSpaceView(null); refreshAccount(userId); }, [userId, refreshAccount]);
+  useEffect(() => { if (!userId) { chatLoadGeneration.current += 1; setFinder(null); setFinderImageFile(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setChatPairs([]); setRequests([]); setRemoteNotices([]); setUnreadNotices(0); setUnreadChats(0); setChatInbox({}); setAccountFavorites([]); setBlockedFreelancers([]); setBlockedListLoaded(false); setProfileStats({ profileViews: 0, saves: 0 }); setShowProfileActivity(false); setSpaceView(null); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } setBlockedListLoaded(false); setSpaceView(null); refreshAccount(userId); }, [userId, refreshAccount]);
   useEffect(() => {
     if (!userId || !accountLoaded || setupLoadError || setupPrompted.current.has(userId)) return;
     setupPrompted.current.add(userId);
@@ -420,18 +423,22 @@ export default function App() {
   const profileId = profile?.id, profileIsSample = !!profile?.demo;
   useEffect(() => { if (!profileId || profileIsSample) return; let active = true; listPortfolioAssets(profileId).then(items => { if (active) setPortfolioAssets(previous => ({ ...previous, [profileId]: items })); }).catch(error => setNotice(error.message)); return () => { active = false; }; }, [profileId, profileIsSample]);
   useEffect(() => { if (!userId) { setContentFlags([]); return; } let active = true; live.getMyContentFlags(userId).then(items => { if (active) setContentFlags(items); }).catch(error => setNotice(error.message)); return () => { active = false; }; }, [userId, profileId]);
-  const allPeople = livePeople;
+  const allPeople = useMemo(() => !authReady || (userId && !blockedListLoaded) ? [] : livePeople.filter(person => !blockedFreelancers.includes(person.id)), [authReady, userId, blockedListLoaded, livePeople, blockedFreelancers]);
+  const directoryReady = authReady && peopleLoaded && (!userId || blockedListLoaded);
   const displayedRequests = requests;
   const finderPosts = displayedRequests.filter(post => post.finderId === userId);
   const messageKey = (person: Freelancer) => person.id;
   const chatPeople = [...new Map(chatPairs.map(item => {
     const id = item.id;
+    const blocked = item.finderId === userId && blockedFreelancers.includes(id);
     const actual = allPeople.find(person => person.id === id);
-    return [id, actual || finderChatPerson(id, item.finderName, item.finderImageUrl)];
+    return [id, blocked ? { ...finderChatPerson(id, 'Blocked freelancer'), role: '', place: '' } : actual || finderChatPerson(id, item.finderName, item.finderImageUrl)];
   })).values()].sort((a, b) => (chatInbox[b.id]?.lastAt || 0) - (chatInbox[a.id]?.lastAt || 0));
   const activeChatId = chatRoute && userId ? chatRoute.finderId === userId ? chatRoute.freelancerId : chatRoute.finderId : null;
   const activeChatPerson = activeChatId
-    ? allPeople.find(person => person.id === activeChatId) || (chatPerson?.id === activeChatId ? chatPerson : null) || chatPeople.find(person => person.id === activeChatId) || null
+    ? chatRoute?.finderId === userId && blockedFreelancers.includes(activeChatId)
+      ? chatPeople.find(person => person.id === activeChatId) || finderChatPerson(activeChatId, 'Blocked freelancer')
+      : allPeople.find(person => person.id === activeChatId) || (chatPerson?.id === activeChatId ? chatPerson : null) || chatPeople.find(person => person.id === activeChatId) || null
     : null;
   const displayMessages = messages;
   const center = place !== 'Goa' ? talukaCenters[place as Taluka] : null;
@@ -481,6 +488,7 @@ export default function App() {
   const openCollection = (title: string, selectedCategory: string) => { setCollection({ title, category: selectedCategory }); setCategory(selectedCategory); setSearch(''); setSearchDraft(''); setPage('collection'); setMenu(null); };
   const openHighlightedCategory = (item: Category) => { if (compact) { setCategory(item.id); setSavedOnly(false); setSearch(''); setSearchDraft(''); setPage('search'); } else openCollection(item.label, item.id); };
   const openProfile = (person: Freelancer) => {
+    if (blockedFreelancers.includes(person.id)) { setNotice('This profile is unavailable while blocked. Unblock it in My Space.'); return; }
     if (!userId && authReady) {
       const visit = guestProfileVisit(Array.isArray(guestViewedProfileIds) ? guestViewedProfileIds : [], person.id);
       if (!visit.allowed) { openAuth('signIn', true); return; }
@@ -560,11 +568,24 @@ export default function App() {
         const blocked = action !== 'unblock';
         await live.setFreelancerBlocked(userId, safetyTarget.id, blocked);
         setBlockedFreelancers(previous => blocked ? [...new Set([...previous, safetyTarget.id])] : previous.filter(id => id !== safetyTarget.id));
+        if (blocked && profile?.id === safetyTarget.id && page === 'profile') { setProfile(null); setPage(detailReturnPage === 'profile' ? 'home' : detailReturnPage); }
+        if (!blocked) void refreshPeople();
       }
       setNotice(action === 'reportBlock' ? 'Report sent to admins. This freelancer is blocked.' : action === 'report' ? 'Report sent to admins.' : action === 'block' ? 'Freelancer blocked. New messages are paused.' : 'Freelancer unblocked.');
       setDialog(null); setSafetyTarget(null);
     } catch (error) { setFormError((error as Error).message); }
     finally { setSafetyBusy(false); }
+  };
+  const unblockFromSpace = async (freelancerId: string) => {
+    if (!userId || unblockingId) return;
+    setUnblockingId(freelancerId);
+    try {
+      await live.setFreelancerBlocked(userId, freelancerId, false);
+      setBlockedFreelancers(previous => previous.filter(id => id !== freelancerId));
+      await refreshPeople();
+      setNotice('Freelancer unblocked.');
+    } catch (error) { setNotice((error as Error).message); }
+    finally { setUnblockingId(null); }
   };
   const openWhatsappPrompt = () => { if (!ownProfile || !userId) return; setFormWhatsapp(publicWhatsapp(ownProfile.links, ownProfile.publicWhatsappUrl)?.replace('https://wa.me/', '') || ''); setFormError(''); setDialog('whatsapp'); };
   const startSetup = (role: SetupRole | null = setupRole) => {
@@ -583,6 +604,7 @@ export default function App() {
   const openChats = () => { if (!userId) { openAuth('signIn'); return; } if (page !== 'chats') setChatReturnPage(page); setChatPerson(null); setChatRoute(null); void refreshChatPairs(); void refreshChatInbox(); setPage('chats'); setMenu(null); };
   const openNotificationChat = async (pair: { finder_id: string; freelancer_id: string }) => {
     if (!userId || ![pair.finder_id, pair.freelancer_id].includes(userId)) { setNotice('This conversation is unavailable.'); return; }
+    if (pair.finder_id === userId && blockedFreelancers.includes(pair.freelancer_id)) { setNotice('This conversation is unavailable while blocked. Manage blocked accounts in My Space.'); return; }
     const otherId = pair.finder_id === userId ? pair.freelancer_id : pair.finder_id;
     let partners = chatPairs;
     try { partners = await live.getChatPartners(userId); setChatPairs(partners); }
@@ -726,7 +748,7 @@ export default function App() {
   const sendMessage = async () => {
     if (!userId || !chatPerson || !chatDraft.trim() || !chatRoute) return;
     try { await live.createMessage(chatRoute.finderId, chatRoute.freelancerId, userId, chatDraft.trim()); }
-    catch (error) { setNotice(`Could not send message: ${(error as Error).message}`); return; }
+    catch { setNotice('Message could not be sent right now. Please try again later.'); return; }
     setChatDraft('');
     await loadChat(chatPerson);
     await refreshChatPairs();
@@ -738,8 +760,9 @@ export default function App() {
     input.onchange = async () => {
       const file = input.files?.[0]; if (!file) return;
       setChatFileBusy(true);
-      try { if (!live.chatFileTypes.includes(file.type)) throw new Error('Attach a PDF, JPEG, PNG or WebP file.'); const upload = await compressChatImage(file); const problem = live.chatFileError(upload); if (problem) throw new Error(problem); await live.sendChatAttachment(chatRoute.finderId, chatRoute.freelancerId, userId, upload); await loadChat(chatPerson); await refreshChatPairs(); }
-      catch (error) { setNotice((error as Error).message); }
+      let sending = false;
+      try { if (!live.chatFileTypes.includes(file.type)) throw new Error('Attach a PDF, JPEG, PNG or WebP file.'); const upload = await compressChatImage(file); const problem = live.chatFileError(upload); if (problem) throw new Error(problem); sending = true; await live.sendChatAttachment(chatRoute.finderId, chatRoute.freelancerId, userId, upload); await loadChat(chatPerson); await refreshChatPairs(); }
+      catch (error) { setNotice(sending && chatRoute.freelancerId === userId ? 'Attachment could not be sent right now. Please try again later.' : (error as Error).message); }
       finally { setChatFileBusy(false); }
     };
     input.click();
@@ -898,15 +921,15 @@ export default function App() {
       </View>
     </View>{secondaryMenuKeys.length > 0 && <DesktopCategoryNavigation {...desktopNavigation} visibleKeys={secondaryMenuKeys} dense={tablet} />}</View>}
     {page === 'home' && compact && <View style={{ paddingHorizontal: pagePadding, paddingTop: 20, paddingBottom: 30, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 20 }}>{mobileLocationPicker}<T style={{ color: color.muted, fontSize: 12 }}>{peopleLoaded ? `${homePeople.length} creatives` : 'Loading creatives…'}</T></View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 20 }}>{mobileLocationPicker}<T style={{ color: color.muted, fontSize: 12 }}>{directoryReady ? `${homePeople.length} creatives` : 'Loading creatives…'}</T></View>
       <Heading size={32} style={{ marginTop: 19, lineHeight: 38 }}>Meet local <Text style={{ color: color.purple }}>talent</Text><Text style={{ color: color.orange }}> ✦</Text></Heading>
       <T style={{ color: color.muted, marginTop: 5, marginBottom: 21, fontSize: 15 }}>Explore Goa talent, portfolios and local skills.</T>
       <Pressable accessibilityRole="button" accessibilityLabel="Search freelancers" onPress={() => goMobileTab('search')} style={{ flexDirection: 'row', alignItems: 'center', gap: 11, minHeight: 52, backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, borderRadius: 17, paddingHorizontal: 16 }}><TabIcon name="search" color={color.purple} size={20} /><T style={{ color: '#89869b', fontSize: 14 }}>Search skills, names, or categories</T></Pressable>
       <PopularSkillChips items={popularCategories.slice(0, 4)} selected={category} onSelect={openHighlightedCategory} />
       <Pressable accessibilityRole="button" accessibilityLabel="Explore all on map" onPress={() => goMobileTab('map')} style={{ alignSelf: 'flex-end', marginTop: 13 }}><T style={{ color: color.purple, fontSize: 13, fontWeight: '900' }}>Explore the map →</T></Pressable>
-      {!peopleLoaded && <DirectoryLoading place={place} />}
-      {peopleLoaded && carouselGroups.map((group, index) => <React.Fragment key={group.category}><CarouselRow title={group.title} detail={group.detail} people={group.people} width={carouselViewportWidth} cardWidth={carouselCardWidth} onMore={() => { setCategory(group.category); setSavedOnly(false); setSearch(''); setSearchDraft(''); setPage('search'); }} renderCard={(person) => <ProfileCard person={person} width={carouselCardWidth} favorite={favorites.includes(person.id)} onFavorite={() => toggleFavorite(person.id)} onOpen={() => openProfile(person)} onChat={() => openContact(person)} />} /><HomeHighlights kind={(['standout','hiring','categories','discover'] as const)[index]} compact people={index === 3 ? allPeople : homePeople} requests={displayedRequests} categories={catalog} onProfile={openProfile} onCategory={openHighlightedCategory} onRequests={() => setPage('requests')} /></React.Fragment>)}
-      {peopleLoaded && !allPeople.length && <View style={{ padding: 26, backgroundColor: '#fff', borderRadius: 18, alignItems: 'center', gap: 12 }}><T style={{ color: color.muted, textAlign: 'center' }}>{peopleLoadError ? 'Could not load creatives. Please try again.' : 'Freelancer profiles will appear here soon.'}</T>{!!peopleLoadError && <Button onPress={() => void refreshPeople()}>Try again</Button>}</View>}
+      {!directoryReady && <DirectoryLoading place={place} />}
+      {directoryReady && carouselGroups.map((group, index) => <React.Fragment key={group.category}><CarouselRow title={group.title} detail={group.detail} people={group.people} width={carouselViewportWidth} cardWidth={carouselCardWidth} onMore={() => { setCategory(group.category); setSavedOnly(false); setSearch(''); setSearchDraft(''); setPage('search'); }} renderCard={(person) => <ProfileCard person={person} width={carouselCardWidth} favorite={favorites.includes(person.id)} onFavorite={() => toggleFavorite(person.id)} onOpen={() => openProfile(person)} onChat={() => openContact(person)} />} /><HomeHighlights kind={(['standout','hiring','categories','discover'] as const)[index]} compact people={index === 3 ? allPeople : homePeople} requests={displayedRequests} categories={catalog} onProfile={openProfile} onCategory={openHighlightedCategory} onRequests={() => setPage('requests')} /></React.Fragment>)}
+      {directoryReady && !allPeople.length && <View style={{ padding: 26, backgroundColor: '#fff', borderRadius: 18, alignItems: 'center', gap: 12 }}><T style={{ color: color.muted, textAlign: 'center' }}>{peopleLoadError ? 'Could not load creatives. Please try again.' : 'Freelancer profiles will appear here soon.'}</T>{!!peopleLoadError && <Button onPress={() => void refreshPeople()}>Try again</Button>}</View>}
     </View>}
     {page === 'search' && compact && <View style={{ paddingHorizontal: pagePadding, paddingTop: 20, paddingBottom: 30, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
       <View style={{ zIndex: 20 }}>{mobileLocationPicker}</View><Heading size={30} style={{ marginTop: 19 }}>Find your person<Text style={{ color: color.coral }}> ✦</Text></Heading><T style={{ color: color.muted, marginTop: 4, marginBottom: 17 }}>Explore skills and creatives near you.</T>
@@ -931,10 +954,10 @@ export default function App() {
           </View>
         </View>
       </View>
-      {peopleLoaded ? <LocalCategoryShowcase people={mapPeople} categories={catalog} onCategory={openHighlightedCategory} /> : <DirectoryLoading place={place} />}
+      {directoryReady ? <LocalCategoryShowcase people={mapPeople} categories={catalog} onCategory={openHighlightedCategory} /> : <DirectoryLoading place={place} />}
       <View style={{ maxWidth: 1540, width: '100%', alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 5, paddingBottom: 64 }}>
-        {peopleLoaded && carouselGroups.map((group, index) => <React.Fragment key={group.category}><CarouselRow title={group.title} detail={group.detail} people={group.people} width={carouselViewportWidth} cardWidth={carouselCardWidth} onMore={() => openCollection(group.title, group.category)} renderCard={(person) => <ProfileCard person={person} width={carouselCardWidth} favorite={favorites.includes(person.id)} onFavorite={() => toggleFavorite(person.id)} onOpen={() => openProfile(person)} onChat={() => openContact(person)} />} /><HomeHighlights kind={(['standout','hiring','categories','discover'] as const)[index]} compact={false} people={index === 3 ? allPeople : homePeople} requests={displayedRequests} categories={catalog} onProfile={openProfile} onCategory={openHighlightedCategory} onRequests={() => setPage('requests')} /></React.Fragment>)}
-        {peopleLoaded && !homePeople.length && <View style={{ padding: 34, borderRadius: 20, backgroundColor: '#fff', marginTop: 24 }}><Heading size={22}>{peopleLoadError ? 'Could not load creatives' : 'No nearby creatives yet'}</Heading><T style={{ color: color.muted, marginTop: 6 }}>{peopleLoadError ? 'Please try loading the directory again.' : 'Try a wider location radius or explore all Goa.'}</T><Button onPress={() => peopleLoadError ? void refreshPeople() : setRadius('All Goa')} style={{ alignSelf: 'flex-start', marginTop: 13 }}>{peopleLoadError ? 'Try again' : 'Show all Goa'}</Button></View>}
+        {directoryReady && carouselGroups.map((group, index) => <React.Fragment key={group.category}><CarouselRow title={group.title} detail={group.detail} people={group.people} width={carouselViewportWidth} cardWidth={carouselCardWidth} onMore={() => openCollection(group.title, group.category)} renderCard={(person) => <ProfileCard person={person} width={carouselCardWidth} favorite={favorites.includes(person.id)} onFavorite={() => toggleFavorite(person.id)} onOpen={() => openProfile(person)} onChat={() => openContact(person)} />} /><HomeHighlights kind={(['standout','hiring','categories','discover'] as const)[index]} compact={false} people={index === 3 ? allPeople : homePeople} requests={displayedRequests} categories={catalog} onProfile={openProfile} onCategory={openHighlightedCategory} onRequests={() => setPage('requests')} /></React.Fragment>)}
+        {directoryReady && !homePeople.length && <View style={{ padding: 34, borderRadius: 20, backgroundColor: '#fff', marginTop: 24 }}><Heading size={22}>{peopleLoadError ? 'Could not load creatives' : 'No nearby creatives yet'}</Heading><T style={{ color: color.muted, marginTop: 6 }}>{peopleLoadError ? 'Please try loading the directory again.' : 'Try a wider location radius or explore all Goa.'}</T><Button onPress={() => peopleLoadError ? void refreshPeople() : setRadius('All Goa')} style={{ alignSelf: 'flex-start', marginTop: 13 }}>{peopleLoadError ? 'Try again' : 'Show all Goa'}</Button></View>}
       </View>
     </>}
     {page === 'collection' && <View style={{ width: '100%', maxWidth: 1540, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 25, paddingBottom: 65 }}>
@@ -944,7 +967,8 @@ export default function App() {
       {!visiblePeople.length && <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 29 }}><Heading size={21}>No matches yet</Heading><T style={{ color: color.muted, marginTop: 6 }}>Try another specialty or a wider location.</T><Button onPress={() => openCollection('All creatives', 'all')} style={{ alignSelf: 'flex-start', marginTop: 13 }}>See all creatives</Button></View>}
     </View>}
     {page === 'map' && <View style={{ width: '100%', maxWidth: 1500, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: compact ? 20 : 25, paddingBottom: 60 }}>{!compact && <Pressable onPress={goHome}><T style={{ color: color.purple, fontWeight: '900' }}>← Back to freelancers</T></Pressable>}{compact && <View style={{ zIndex: 20 }}>{mobileLocationPicker}</View>}<View style={{ marginTop: 15, marginBottom: 15 }}><Heading size={compact ? 27 : 30}>Creatives around {place} 📍</Heading><T style={{ color: color.muted, marginTop: 4 }}>{'Tap a pin to view a profile.'}</T></View><ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }} contentContainerStyle={{ gap: 8 }}>{['Local', '10 km', '25 km', 'All Goa'].map(value => <Pressable key={value} onPress={() => setRadius(value)} style={{ paddingHorizontal: 17, paddingVertical: 9, borderRadius: 18, backgroundColor: radius === value ? color.purple : '#fff', borderWidth: 1, borderColor: radius === value ? color.purple : color.line }}><T style={{ color: radius === value ? '#fff' : color.ink, fontSize: 13, fontWeight: '900' }}>{value}</T></Pressable>)}</ScrollView><MapCanvas people={mapPeople} compact={compact} place={place} radius={radius} onSelect={openProfile} /><View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 13 }}><Text style={{ color: color.purple }}>●</Text><T style={{ fontSize: 13, color: color.muted }}>{mapPeople.length} creatives · Locations are approximate</T></View></View>}
-    {page === 'chats' && userId && <ChatWorkspace viewerId={userId} compact={compact} people={activeChatPerson && !chatPeople.some(person => person.id === activeChatPerson.id) ? [activeChatPerson, ...chatPeople] : chatPeople} selected={activeChatPerson} messages={displayMessages} inbox={chatInbox} unreadTotal={unreadChats} draft={chatDraft} role={chatRoute?.freelancerId === userId ? 'freelancer' : 'finder'} messageKey={messageKey} onSelect={selectChat} onBack={() => { setChatRoute(null); setChatPerson(null); }} onClose={closeChats} onWhatsappSetup={needsWhatsapp ? openWhatsappPrompt : undefined} blocked={!!chatRoute && blockedFreelancers.includes(chatRoute.freelancerId)} onSafety={openSafety} onDraft={setChatDraft} onSend={sendMessage} onAttach={attachChatFile} attaching={chatFileBusy} />}
+    {page === 'chats' && userId && !blockedListLoaded && <View style={{ padding: 30, alignItems: 'center' }}><T style={{ color: color.muted }}>Loading conversations…</T></View>}
+    {page === 'chats' && userId && blockedListLoaded && <ChatWorkspace viewerId={userId} compact={compact} people={activeChatPerson && !chatPeople.some(person => person.id === activeChatPerson.id) ? [activeChatPerson, ...chatPeople] : chatPeople} selected={activeChatPerson} messages={displayMessages} inbox={chatInbox} unreadTotal={unreadChats} draft={chatDraft} role={chatRoute?.freelancerId === userId ? 'freelancer' : 'finder'} messageKey={messageKey} onSelect={selectChat} onBack={() => { setChatRoute(null); setChatPerson(null); }} onClose={closeChats} onWhatsappSetup={needsWhatsapp ? openWhatsappPrompt : undefined} blocked={!!chatRoute && blockedFreelancers.includes(chatRoute.freelancerId)} onSafety={openSafety} onDraft={setChatDraft} onSend={sendMessage} onAttach={attachChatFile} attaching={chatFileBusy} />}
     {page === 'account' && <View style={{ width: '100%', maxWidth: 1230, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 29, paddingBottom: 60 }}>
       <Heading size={compact ? 29 : 34}>My space<Text style={{ color: color.coral }}> ✦</Text></Heading><T style={{ color: '#6880a8', marginTop: 5, marginBottom: 22 }}>Manage your profile, requirements and conversations.</T>
       {!!finder && !!ownProfile && <View style={{ flexDirection: 'row', gap: 9, marginBottom: 17 }}><Button outline={!finderSpace} flat onPress={() => { setSpaceView('finder'); setShowProfileActivity(false); }} style={{ minHeight: 38 }}>Finder space</Button><Button outline={finderSpace} flat onPress={() => { setSpaceView('freelancer'); setShowProfileActivity(false); }} style={{ minHeight: 38 }}>Freelancer space</Button></View>}
@@ -957,6 +981,7 @@ export default function App() {
       </View>}
       {!finderSpace && needsWhatsapp && <View style={{ backgroundColor: '#edfbf5', borderWidth: 1, borderColor: '#b6ecd4', borderRadius: 19, padding: compact ? 17 : 21, marginBottom: 18, flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'flex-start' : 'center', gap: 16 }}><View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: '#24c778', alignItems: 'center', justifyContent: 'center' }}><T style={{ color: '#fff', fontSize: 30 }}>◉</T></View><View style={{ flex: 1 }}><T style={{ color: '#0a5640', fontSize: 17, fontWeight: '900' }}>Let clients reach you on WhatsApp</T><T style={{ color: '#4d7d6b', fontSize: 13, marginTop: 3 }}>Add a number to show a WhatsApp button on your profile and in chats.</T></View><Button outline flat onPress={openWhatsappPrompt}>Add WhatsApp number →</Button></View>}
       {!!contentFlags.length && <View nativeID="account-flags" style={{ backgroundColor: '#fff4f6', borderWidth: 1, borderColor: '#f2cbd4', borderRadius: 18, padding: 17, marginBottom: 18 }}><T style={{ color: '#a32f4d', fontSize: 16, fontWeight: '900' }}>{contentFlags.some(flag => flag.target_kind === 'account') ? 'Your account is under review' : 'Content under review'}</T><T style={{ color: '#79495a', fontSize: 12, marginTop: 4 }}>Review the flagged items and the admin’s reason below. Flagged listings stay off public pages until the review is resolved; an account flag alone does not suspend your account.</T>{contentFlags.map(flag => <T key={flag.id} style={{ color: '#79495a', fontSize: 12, marginTop: 9 }}>• {flag.target_kind === 'account' ? 'Account' : flag.target_title || flag.target_kind}: {flag.reason}</T>)}</View>}
+      {!!blockedFreelancers.length && !!finder && <View style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, borderRadius: 18, padding: 17, marginBottom: 18 }}><Heading size={18}>Blocked accounts</Heading><T style={{ color: color.muted, fontSize: 12, marginTop: 4, marginBottom: 10 }}>Blocked profiles are hidden from your directory. You can unblock them here.</T>{blockedFreelancers.map((id, index) => <View key={id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 7 }}><T style={{ fontWeight: '800' }}>Blocked freelancer {index + 1}</T><Button outline flat disabled={!!unblockingId} onPress={() => void unblockFromSpace(id)} style={{ minHeight: 36 }}>{unblockingId === id ? 'Unblocking…' : 'Unblock'}</Button></View>)}</View>}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
         <ActionTile icon="📄" title={finderSpace ? 'Your request activity' : 'Your profile activity'} detail={finderSpace ? 'See your requirements and the freelancers who approached them.' : 'See profile views and people who saved you.'} tone="#e4f2ff" onPress={() => { setShowProfileActivity(true); setPendingScrollTarget({ id: finderSpace ? 'request-activity' : 'profile-activity', page: 'account' }); }} />
         <ActionTile icon="📋" title="My requirements" detail="Follow your posted requirements and responses." tone="#f0e8ff" onPress={() => setPage('myPosts')} />
@@ -973,7 +998,8 @@ export default function App() {
       {userId && <Pressable accessibilityRole="button" onPress={signOut} style={{ paddingVertical: 20, alignItems: 'center' }}><T style={{ color: color.muted, fontWeight: '900' }}>Sign out</T></Pressable>}
     </View>}
     {page === 'myPosts' && <View style={{ width: '100%', maxWidth: 1050, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 29, paddingBottom: 60 }}><Pressable onPress={() => setPage('account')}><T style={{ color: color.purple, fontWeight: '900' }}>← My space</T></Pressable><View style={{ flexDirection: compact ? 'column' : 'row', justifyContent: 'space-between', alignItems: compact ? 'flex-start' : 'center', gap: 13, marginTop: 17, marginBottom: 20 }}><View><Heading size={30}>My requirements 📋</Heading><T style={{ color: color.muted, marginTop: 4 }}>See your posts and the freelancers who approached you.</T></View><Button onPress={openNewRequest}>Post a requirement</Button></View>{finderPosts.map(post => <View key={post.id} nativeID={`request-${post.id}`} style={{ backgroundColor: '#fff', borderRadius: 20, padding: 21, marginBottom: 12, borderWidth: 1, borderColor: color.line }}><TinyTag style={{ alignSelf: 'flex-start', marginBottom: 11 }}>YOUR POST</TinyTag>{post.moderationStatus === 'under_review' && <View style={{ backgroundColor: '#fff0f3', borderWidth: 1, borderColor: '#f5cbd6', borderRadius: 12, padding: 12, marginBottom: 12 }}><T style={{ color: '#b63756', fontWeight: '900' }}>Under review</T><T style={{ color: '#89546a', fontSize: 12, marginTop: 3 }}>This requirement is hidden from public listings while the admin reviews it.</T>{contentFlags.filter(flag => flag.target_kind === 'request' && flag.target_id === post.id).map(flag => <T key={flag.id} style={{ color: '#89546a', fontSize: 12, marginTop: 4 }}>Reason: {flag.reason} · {new Date(flag.created_at).toLocaleDateString()}</T>)}</View>}<Heading size={21}>{post.title}</Heading><T style={{ color: color.muted, marginTop: 5 }}>{post.taluka} · {catalog.find(item => item.id === post.category)?.label || post.category}</T><T style={{ marginTop: 11 }}>{post.details}</T><T style={{ color: color.purple, marginTop: 16, fontWeight: '900', fontSize: 15 }}>Approached freelancers ({(applications[post.id] || []).length})</T>{(applications[post.id] || []).length === 0 && <T style={{ color: color.muted, marginTop: 5 }}>Matching freelancers will appear here when they approach you.</T>}{(applications[post.id] || []).map(item => { const person = allPeople.find(value => value.id === item.freelancer_id); const connected = chatPairs.some(row => row.finderId === userId && row.freelancerId === item.freelancer_id); return <View key={item.id} style={{ marginTop: 9, padding: 12, backgroundColor: '#fbf9ff', borderWidth: 1, borderColor: '#e9e1f4', borderRadius: 16 }}><View style={{ flexDirection: 'row', gap: 11, alignItems: 'center' }}>{person && <View style={{ width: 58 }}><Portrait index={person.image} imageUrl={person.imageUrl} name={person.name} height={58} radius={12} /></View>}<View style={{ flex: 1 }}><T style={{ fontWeight: '900' }}>{person?.name || 'Freelancer'}</T><T style={{ color: color.muted, fontSize: 12 }}>{person ? `${person.role} · ${person.taluka}` : 'Approached your request'}</T></View><T style={{ color: connected ? '#26846c' : color.purple, fontSize: 12, fontWeight: '900' }}>{connected ? 'Connected' : item.status === 'declined' ? 'Declined' : 'Approached'}</T></View><T style={{ marginTop: 8 }} numberOfLines={3}>{item.note}</T>{person && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 11 }}><Button outline flat onPress={() => openProfile(person)} style={{ minHeight: 38 }}>View profile</Button>{item.status !== 'declined' && <Button flat onPress={() => openContact(person)} style={{ minHeight: 38 }}>{connected ? 'Open chat →' : 'Connect →'}</Button>}</View>}</View>; })}</View>)}</View>}
-    {page === 'profile' && profile && <View style={{ width: '100%', maxWidth: 1260, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 24, paddingBottom: 65 }}>
+    {page === 'profile' && profile && blockedFreelancers.includes(profile.id) && <View style={{ width: '100%', maxWidth: 600, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 40 }}><Heading size={25}>Profile unavailable</Heading><T style={{ color: color.muted, marginTop: 8 }}>This account is blocked. Manage blocked accounts in My Space.</T><Button onPress={() => { setProfile(null); setPage('account'); }} style={{ alignSelf: 'flex-start', marginTop: 16 }}>Open My Space</Button></View>}
+    {page === 'profile' && profile && !blockedFreelancers.includes(profile.id) && <View style={{ width: '100%', maxWidth: 1260, alignSelf: 'center', paddingHorizontal: pagePadding, paddingTop: 24, paddingBottom: 65 }}>
       <Pressable accessibilityRole="button" onPress={goBackFromProfile}><T style={{ color: color.purple, fontWeight: '900' }}>← Back to {detailReturnPage === 'map' ? 'map' : detailReturnPage === 'search' ? 'search' : detailReturnPage === 'collection' ? collection.title.toLowerCase() : 'freelancers'}</T></Pressable>
       <View style={{ marginTop: 18, borderRadius: 28, backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, overflow: 'hidden' }}>
       <ProfileWall profile={allPeople.find(person => person.id === profile.id) || profile} compact={compact} narrow={narrow} rating={profileRating} reviewCount={profileReviewCount} saved={favorites.includes(profile.id)} onChat={() => openContact(profile)} onSave={() => toggleFavorite(profile.id)} onMap={() => { setPage('map'); setRadius('All Goa'); }} onSafety={userId && userId !== profile.id && !profile.demo ? () => openSafety(profile) : undefined} blocked={blockedFreelancers.includes(profile.id)} />
