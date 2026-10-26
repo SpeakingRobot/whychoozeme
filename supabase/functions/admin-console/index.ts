@@ -18,7 +18,7 @@ async function removeUserFiles(server: any, userId: string) {
     if (files.length) unwrap(await server.storage.from(bucket).remove(files));
     if (data.length === 100) await removeFolder(bucket, prefix);
   };
-  for (const bucket of ['portfolio-public', 'finder-avatars', 'inquiry-private', 'agreement-private', 'chat-private']) await removeFolder(bucket, userId);
+  for (const bucket of ['portfolio-public', 'certificate-images', 'finder-avatars', 'inquiry-private', 'agreement-private', 'chat-private']) await removeFolder(bucket, userId);
 }
 
 async function deleteTestUser(server: any, userId: string) {

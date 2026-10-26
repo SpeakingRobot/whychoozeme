@@ -55,7 +55,7 @@ export type Freelancer = {
   responseSamples?: number;
 };
 
-export type Certification = { name: string; issuer: string; year?: string };
+export type Certification = { name: string; issuer: string; year?: string; imagePath?: string };
 export type WorkExperience = { role: string; organization: string; period?: string; summary?: string };
 export type Finder = { name: string; email: string; taluka: Taluka; avatarPath?: string; imageUrl?: string };
 export type RequestPost = { id: string; title: string; category: string; details: string; taluka: Taluka; createdAt: number; finder: string; finderId?: string; moderationStatus?: 'clear' | 'under_review' };

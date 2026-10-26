@@ -6,6 +6,7 @@ export function normalizeCertifications(value: unknown): Certification[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, 8).map(item => ({
     name: clean(item?.name, 120), issuer: clean(item?.issuer, 120), year: clean(item?.year, 20),
+    imagePath: clean(item?.imagePath, 180),
   })).filter(item => item.name && item.issuer);
 }
 
