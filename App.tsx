@@ -627,6 +627,7 @@ export default function App() {
             .then(approaches => setApplications(previous => ({ ...previous, [requestId]: approaches })))
             .catch(error => setNotice(`Could not refresh approaches: ${(error as Error).message}`));
           const destination = item.kind === 'application' ? 'myPosts' : 'requests';
+          if (item.kind === 'requirement') setSpaceView('freelancer');
           setPendingScrollTarget({ id: `request-${requestId}`, page: destination });
           setPage(destination);
         } catch (error) { setNotice(`Could not open this requirement: ${(error as Error).message}`); }
@@ -646,8 +647,15 @@ export default function App() {
       }).catch(error => setNotice(error.message));
       return;
     }
-    if (item.kind === 'profile_save') { setShowProfileActivity(true); setPendingScrollTarget({ id: 'profile-activity', page: 'account' }); setPage('account'); return; }
-    if (item.kind === 'review' && ownProfile) { setPendingScrollTarget({ id: 'profile-reviews', page: 'profile', profileId: ownProfile.id }); openProfile(ownProfile); }
+    if (item.kind === 'profile_save') {
+      if (!ownProfile) { setNotice('Your Freelancer profile is no longer available.'); return; }
+      setSpaceView('freelancer'); setShowProfileActivity(true);
+      setPendingScrollTarget({ id: 'profile-activity', page: 'account' }); setPage('account'); return;
+    }
+    if (item.kind === 'review') {
+      if (!ownProfile) { setNotice('Your Freelancer profile is no longer available.'); return; }
+      setSpaceView('freelancer'); setPendingScrollTarget({ id: 'profile-reviews', page: 'profile', profileId: ownProfile.id }); openProfile(ownProfile);
+    }
   };
   const closeChats = () => { setPage(chatReturnPage === 'chats' ? 'home' : chatReturnPage); setChatPerson(null); };
   const openNewRequest = () => { if (!userId) { openAuth('signIn'); return; } if (!finder) { setFinderName(ownProfile?.name || finderName); setFinderTaluka(ownProfile?.taluka || finderTaluka); } setDialog(finder ? 'request' : 'finder'); setMenu(null); };
