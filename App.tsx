@@ -271,9 +271,10 @@ export default function App() {
   const [safetyReason, setSafetyReason] = useState('');
   const [safetyBusy, setSafetyBusy] = useState(false);
   const [ownProfile, setOwnProfile] = useState<Freelancer | null>(null);
-  const [spaceView, setSpaceView] = useState<'finder' | 'freelancer'>('finder');
+  const [spaceView, setSpaceView] = useState<'finder' | 'freelancer' | null>(null);
   const hasOwnProfile = !!userId && ownProfile?.id === userId;
-  const finderSpace = (!!finder && (!ownProfile || spaceView === 'finder')) || (!ownProfile && (signedInRole || setupRole) === 'finder');
+  const preferredSpaceView = spaceView || (signedInRole === 'freelancer' || (!signedInRole && ownProfile) ? 'freelancer' : 'finder');
+  const finderSpace = (!!finder && (!ownProfile || preferredSpaceView === 'finder')) || (!ownProfile && (signedInRole || setupRole) === 'finder');
   const completionState: CompletionState = useMemo(() => ({ role: setupRole, finder: !!finder, freelancer: !!ownProfile,
     photo: !!ownProfile?.imageUrl, description: !!ownProfile?.description?.trim() }), [setupRole, finder, ownProfile]);
   const completionSteps = setupSteps(completionState);
@@ -387,7 +388,7 @@ export default function App() {
     } catch (error) { setNotice((error as Error).message); }
   }, [userId, chatRoute, refreshChatInbox]);
   useEffect(() => { let active = true; live.account().then(({ user }) => { if (active) setUserId(user?.email_confirmed_at ? user.id : null); }).catch(error => setNotice(error.message)).finally(() => { if (active) setAuthReady(true); }); refreshPeople(); live.getCategories().then(setCatalog).catch(error => setNotice(error.message)); live.getProfileFrames().then(setProfileFrames).catch(() => {}); const subscription = live.db?.auth.onAuthStateChange((_event, session) => { setUserId(session?.user?.email_confirmed_at ? session.user.id : null); }); return () => { active = false; subscription?.data.subscription.unsubscribe(); }; }, [refreshPeople]);
-  useEffect(() => { if (!userId) { chatLoadGeneration.current += 1; setFinder(null); setFinderImageFile(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setChatPairs([]); setRequests([]); setRemoteNotices([]); setUnreadNotices(0); setUnreadChats(0); setChatInbox({}); setAccountFavorites([]); setBlockedFreelancers([]); setProfileStats({ profileViews: 0, saves: 0 }); setShowProfileActivity(false); setSpaceView('finder'); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } refreshAccount(userId); }, [userId, refreshAccount]);
+  useEffect(() => { if (!userId) { chatLoadGeneration.current += 1; setFinder(null); setFinderImageFile(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setChatPairs([]); setRequests([]); setRemoteNotices([]); setUnreadNotices(0); setUnreadChats(0); setChatInbox({}); setAccountFavorites([]); setBlockedFreelancers([]); setProfileStats({ profileViews: 0, saves: 0 }); setShowProfileActivity(false); setSpaceView(null); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } setSpaceView(null); refreshAccount(userId); }, [userId, refreshAccount]);
   useEffect(() => {
     if (!userId || !accountLoaded || setupLoadError || setupPrompted.current.has(userId)) return;
     setupPrompted.current.add(userId);
