@@ -248,6 +248,9 @@ export async function getChatInbox(userId: string): Promise<Record<string, ChatI
 export async function createMessage(finderId: string, freelancerId: string, senderId: string, body: string) {
   unwrap(await assertDb().from('chat_messages').insert({ finder_id: finderId, freelancer_id: freelancerId, sender_id: senderId, body }));
 }
+export async function isChatBlocked(finderId: string, freelancerId: string): Promise<boolean> {
+  return unwrap(await assertDb().rpc('chat_is_blocked', { p_finder: finderId, p_freelancer: freelancerId })) === true;
+}
 export type ChatAttachment = { fileName: string; mimeType: string; sizeBytes: number; url: string };
 export async function getChatAttachments(messageIds: string[]): Promise<Record<string, ChatAttachment>> {
   if (!messageIds.length) return {};

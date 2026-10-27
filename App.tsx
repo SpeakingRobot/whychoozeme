@@ -763,10 +763,16 @@ export default function App() {
   const postRequest = async () => { if (!finder || !userId) { setDialog('finder'); return; } if (requestTitle.trim().length < 4 || requestDetails.trim().length < 10) { setFormError('Add a title and a description of at least 10 characters.'); return; }
     try { await live.createRequest(userId, requestTitle.trim(), requestDetails.trim(), requestCategory, finder.taluka); setRequests(await live.getRequests(userId)); } catch (error) { setFormError((error as Error).message); return; }
     setRequestTitle(''); setRequestDetails(''); setDialog(null); setPage('myPosts'); setNotice('Requirement posted.'); };
+  const showChatSendFailure = async (route: { finderId: string; freelancerId: string }) => {
+    let blocked = false;
+    try { blocked = await live.isChatBlocked(route.finderId, route.freelancerId); }
+    catch { /* A failed status check should not replace the original send failure. */ }
+    setNotice(blocked ? "You can't send a message to this person." : 'Message could not be sent right now. Check your connection and try again.');
+  };
   const sendMessage = async () => {
     if (!userId || !chatPerson || !chatDraft.trim() || !chatRoute) return;
     try { await live.createMessage(chatRoute.finderId, chatRoute.freelancerId, userId, chatDraft.trim()); }
-    catch { setNotice('Message could not be sent right now. Please try again later.'); return; }
+    catch { await showChatSendFailure(chatRoute); return; }
     setChatDraft('');
     await loadChat(chatPerson);
     await refreshChatPairs();
@@ -780,7 +786,7 @@ export default function App() {
       setChatFileBusy(true);
       let sending = false;
       try { if (!live.chatFileTypes.includes(file.type)) throw new Error('Attach a PDF, JPEG, PNG or WebP file.'); const upload = await compressChatImage(file); const problem = live.chatFileError(upload); if (problem) throw new Error(problem); sending = true; await live.sendChatAttachment(chatRoute.finderId, chatRoute.freelancerId, userId, upload); await loadChat(chatPerson); await refreshChatPairs(); }
-      catch (error) { setNotice(sending && chatRoute.freelancerId === userId ? 'Attachment could not be sent right now. Please try again later.' : (error as Error).message); }
+      catch (error) { if (sending) await showChatSendFailure(chatRoute); else setNotice((error as Error).message); }
       finally { setChatFileBusy(false); }
     };
     input.click();
