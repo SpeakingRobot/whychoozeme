@@ -268,6 +268,10 @@ export default function App() {
   const [contentFlags, setContentFlags] = useState<live.ContentModerationFlag[]>([]);
   const [blockedFreelancers, setBlockedFreelancers] = useState<string[]>([]);
   const [blockedListLoaded, setBlockedListLoaded] = useState(false);
+  const [showSafetyHistory, setShowSafetyHistory] = useState(false);
+  const [safetyReports, setSafetyReports] = useState<live.FinderSafetyReport[]>([]);
+  const [safetyHistoryBusy, setSafetyHistoryBusy] = useState(false);
+  const [safetyHistoryError, setSafetyHistoryError] = useState('');
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
   const [safetyTarget, setSafetyTarget] = useState<Freelancer | null>(null);
   const [safetyReason, setSafetyReason] = useState('');
@@ -391,7 +395,7 @@ export default function App() {
     } catch (error) { setNotice((error as Error).message); }
   }, [userId, chatRoute, refreshChatInbox]);
   useEffect(() => { let active = true; live.account().then(({ user }) => { if (active) setUserId(user?.email_confirmed_at ? user.id : null); }).catch(error => setNotice(error.message)).finally(() => { if (active) setAuthReady(true); }); refreshPeople(); live.getCategories().then(setCatalog).catch(error => setNotice(error.message)); live.getProfileFrames().then(setProfileFrames).catch(() => {}); const subscription = live.db?.auth.onAuthStateChange((_event, session) => { setUserId(session?.user?.email_confirmed_at ? session.user.id : null); }); return () => { active = false; subscription?.data.subscription.unsubscribe(); }; }, [refreshPeople]);
-  useEffect(() => { if (!userId) { chatLoadGeneration.current += 1; setFinder(null); setFinderImageFile(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setChatPairs([]); setRequests([]); setRemoteNotices([]); setUnreadNotices(0); setUnreadChats(0); setChatInbox({}); setAccountFavorites([]); setBlockedFreelancers([]); setBlockedListLoaded(false); setProfileStats({ profileViews: 0, saves: 0 }); setShowProfileActivity(false); setSpaceView(null); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } setBlockedListLoaded(false); setSpaceView(null); refreshAccount(userId); }, [userId, refreshAccount]);
+  useEffect(() => { if (!userId) { chatLoadGeneration.current += 1; setFinder(null); setFinderImageFile(null); setSignedInRole(null); setAccountDisplayName(''); setSetupRole(null); setAccountLoaded(false); setChatPairs([]); setRequests([]); setRemoteNotices([]); setUnreadNotices(0); setUnreadChats(0); setChatInbox({}); setAccountFavorites([]); setBlockedFreelancers([]); setBlockedListLoaded(false); setSafetyReports([]); setShowSafetyHistory(false); setSafetyHistoryError(''); setProfileStats({ profileViews: 0, saves: 0 }); setShowProfileActivity(false); setSpaceView(null); setAdmin(false); setOwnProfile(null); setMessages([]); setPortfolioAssets({}); return; } setBlockedListLoaded(false); setSpaceView(null); refreshAccount(userId); }, [userId, refreshAccount]);
   useEffect(() => {
     if (!userId || !accountLoaded || setupLoadError || setupPrompted.current.has(userId)) return;
     setupPrompted.current.add(userId);
@@ -586,6 +590,20 @@ export default function App() {
       setNotice('Freelancer unblocked.');
     } catch (error) { setNotice((error as Error).message); }
     finally { setUnblockingId(null); }
+  };
+  const loadSafetyHistory = async () => {
+    if (!userId || !finder) return;
+    setSafetyHistoryBusy(true); setSafetyHistoryError('');
+    try {
+      const [reports, blocks] = await Promise.all([live.getMySafetyReports(userId), live.getBlockedFreelancers()]);
+      setSafetyReports(reports); setBlockedFreelancers(blocks);
+    } catch (error) { setSafetyHistoryError((error as Error).message); }
+    finally { setSafetyHistoryBusy(false); }
+  };
+  const openSafetyHistory = () => {
+    setShowSafetyHistory(true);
+    setPendingScrollTarget({ id: 'safety-history', page: 'account' });
+    void loadSafetyHistory();
   };
   const openWhatsappPrompt = () => { if (!ownProfile || !userId) return; setFormWhatsapp(publicWhatsapp(ownProfile.links, ownProfile.publicWhatsappUrl)?.replace('https://wa.me/', '') || ''); setFormError(''); setDialog('whatsapp'); };
   const startSetup = (role: SetupRole | null = setupRole) => {
@@ -981,7 +999,6 @@ export default function App() {
       </View>}
       {!finderSpace && needsWhatsapp && <View style={{ backgroundColor: '#edfbf5', borderWidth: 1, borderColor: '#b6ecd4', borderRadius: 19, padding: compact ? 17 : 21, marginBottom: 18, flexDirection: compact ? 'column' : 'row', alignItems: compact ? 'flex-start' : 'center', gap: 16 }}><View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: '#24c778', alignItems: 'center', justifyContent: 'center' }}><T style={{ color: '#fff', fontSize: 30 }}>◉</T></View><View style={{ flex: 1 }}><T style={{ color: '#0a5640', fontSize: 17, fontWeight: '900' }}>Let clients reach you on WhatsApp</T><T style={{ color: '#4d7d6b', fontSize: 13, marginTop: 3 }}>Add a number to show a WhatsApp button on your profile and in chats.</T></View><Button outline flat onPress={openWhatsappPrompt}>Add WhatsApp number →</Button></View>}
       {!!contentFlags.length && <View nativeID="account-flags" style={{ backgroundColor: '#fff4f6', borderWidth: 1, borderColor: '#f2cbd4', borderRadius: 18, padding: 17, marginBottom: 18 }}><T style={{ color: '#a32f4d', fontSize: 16, fontWeight: '900' }}>{contentFlags.some(flag => flag.target_kind === 'account') ? 'Your account is under review' : 'Content under review'}</T><T style={{ color: '#79495a', fontSize: 12, marginTop: 4 }}>Review the flagged items and the admin’s reason below. Flagged listings stay off public pages until the review is resolved; an account flag alone does not suspend your account.</T>{contentFlags.map(flag => <T key={flag.id} style={{ color: '#79495a', fontSize: 12, marginTop: 9 }}>• {flag.target_kind === 'account' ? 'Account' : flag.target_title || flag.target_kind}: {flag.reason}</T>)}</View>}
-      {!!blockedFreelancers.length && !!finder && <View style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, borderRadius: 18, padding: 17, marginBottom: 18 }}><Heading size={18}>Blocked accounts</Heading><T style={{ color: color.muted, fontSize: 12, marginTop: 4, marginBottom: 10 }}>Blocked profiles are hidden from your directory. You can unblock them here.</T>{blockedFreelancers.map((id, index) => <View key={id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 7 }}><T style={{ fontWeight: '800' }}>Blocked freelancer {index + 1}</T><Button outline flat disabled={!!unblockingId} onPress={() => void unblockFromSpace(id)} style={{ minHeight: 36 }}>{unblockingId === id ? 'Unblocking…' : 'Unblock'}</Button></View>)}</View>}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
         <ActionTile icon="📄" title={finderSpace ? 'Your request activity' : 'Your profile activity'} detail={finderSpace ? 'See your requirements and the freelancers who approached them.' : 'See profile views and people who saved you.'} tone="#e4f2ff" onPress={() => { setShowProfileActivity(true); setPendingScrollTarget({ id: finderSpace ? 'request-activity' : 'profile-activity', page: 'account' }); }} />
         <ActionTile icon="📋" title="My requirements" detail="Follow your posted requirements and responses." tone="#f0e8ff" onPress={() => setPage('myPosts')} />
@@ -992,8 +1009,19 @@ export default function App() {
         {finderSpace && <ActionTile icon="✦" title="Create a freelancer profile" detail="Offer your own skills alongside your Finder account." tone="#ddf8ed" onPress={editFreelancerProfile} />}
         <ActionTile icon="☏" title="Chats" detail="Message people you have connected with." tone="#ffe8f1" wide onPress={openChats} />
         <ActionTile icon="♥" title="Saved creatives" detail="People you want to revisit." tone="#ffe5e9" wide onPress={() => { setCategory('all'); setSearch(''); setSearchDraft(''); setSavedOnly(true); setRadius('All Goa'); setPage('search'); }} />
+        {!!finder && <ActionTile icon="⚑" title="Blocked and reported users" detail="Review your blocks, reports and report reasons." tone="#fce8ed" onPress={openSafetyHistory} />}
         {admin && <ActionTile icon="⚑" title="Admin console" detail="Manage users, listings and moderation." tone="#e6edff" wide onPress={openAdminConsole} />}
       </View>
+      {showSafetyHistory && !!finder && <View nativeID="safety-history" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#eadce8', borderRadius: 19, padding: 21, marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}><View><Heading size={19}>Blocked and reported users</Heading><T style={{ color: color.muted, fontSize: 12, marginTop: 3 }}>Only you and admins can see your reports. A report does not automatically block someone.</T></View><Button outline flat disabled={safetyHistoryBusy} onPress={() => void loadSafetyHistory()}>{safetyHistoryBusy ? 'Loading…' : 'Refresh'}</Button></View>
+        {!!safetyHistoryError && <T style={{ color: color.coral, fontSize: 12, marginTop: 11 }}>{safetyHistoryError}</T>}
+        <Heading size={16} style={{ marginTop: 18 }}>Blocked users ({blockedFreelancers.length})</Heading>
+        {!blockedFreelancers.length && <T style={{ color: color.muted, fontSize: 12, marginTop: 7 }}>You have not blocked anyone.</T>}
+        {blockedFreelancers.map((id, index) => <View key={id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderColor: '#f0eaf2' }}><View><T style={{ fontWeight: '900' }}>Blocked freelancer {index + 1}</T><T style={{ color: color.muted, fontSize: 11 }}>Account ID: {id}</T></View><Button outline flat disabled={!!unblockingId} onPress={() => void unblockFromSpace(id)} style={{ minHeight: 36 }}>{unblockingId === id ? 'Unblocking…' : 'Unblock'}</Button></View>)}
+        <Heading size={16} style={{ marginTop: 18 }}>Your reports ({safetyReports.length})</Heading>
+        {!safetyReports.length && <T style={{ color: color.muted, fontSize: 12, marginTop: 7 }}>You have not submitted a report.</T>}
+        {safetyReports.map(report => <View key={report.id} style={{ padding: 13, backgroundColor: '#fbf8fc', borderRadius: 12, marginTop: 9 }}><T style={{ fontWeight: '900', fontSize: 13 }}>{livePeople.find(person => person.id === report.freelancer_id)?.name || `Freelancer ${report.freelancer_id.slice(0, 8)}`}{blockedFreelancers.includes(report.freelancer_id) ? ' · Blocked' : ''}</T><T style={{ color: color.muted, fontSize: 11, marginTop: 2 }}>{new Date(report.created_at).toLocaleString()} · Account ID: {report.freelancer_id}</T><T style={{ fontSize: 12, marginTop: 7 }}>Reason: {report.reason}</T></View>)}
+      </View>}
       {showProfileActivity && (finderSpace ? <View nativeID="request-activity" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#d9e7ff', borderRadius: 19, padding: 21, marginTop: 16 }}><Heading size={19}>Your request activity</Heading><T style={{ color: color.muted, fontSize: 12, marginTop: 3 }}>See how freelancers are responding to your requirements.</T><View style={{ flexDirection: 'row', gap: 12, marginTop: 13 }}><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#f4efff', padding: 14 }}><T style={{ color: color.purple, fontSize: 24, fontWeight: '900' }}>{finderPosts.length}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>Requirements posted</T></View><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#fff0f3', padding: 14 }}><T style={{ color: color.coral, fontSize: 24, fontWeight: '900' }}>{finderPosts.reduce((total, post) => total + (applications[post.id] || []).length, 0)}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>Freelancer approaches</T></View></View></View> : <View nativeID="profile-activity" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#d9e7ff', borderRadius: 19, padding: 21, marginTop: 16 }}><Heading size={19}>Your profile activity</Heading><T style={{ color: color.muted, fontSize: 12, marginTop: 3 }}>Signed-in visitors are counted once per day.</T><View style={{ flexDirection: 'row', gap: 12, marginTop: 13 }}><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#f4efff', padding: 14 }}><T style={{ color: color.purple, fontSize: 24, fontWeight: '900' }}>{profileStats.profileViews}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>Profile views</T></View><View style={{ flex: 1, borderRadius: 14, backgroundColor: '#fff0f3', padding: 14 }}><T style={{ color: color.coral, fontSize: 24, fontWeight: '900' }}>{profileStats.saves}</T><T style={{ color: color.muted, fontSize: 12, fontWeight: '900' }}>People who saved you</T></View></View></View>)}
       {userId && <Pressable accessibilityRole="button" onPress={signOut} style={{ paddingVertical: 20, alignItems: 'center' }}><T style={{ color: color.muted, fontWeight: '900' }}>Sign out</T></Pressable>}
     </View>}

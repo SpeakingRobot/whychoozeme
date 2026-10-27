@@ -191,6 +191,12 @@ export async function setFreelancerBlocked(finderId: string, freelancerId: strin
 export async function reportFreelancer(finderId: string, freelancerId: string, reason: string): Promise<void> {
   unwrap(await assertDb().from('freelancer_reports').insert({ finder_id: finderId, freelancer_id: freelancerId, reason: reason.trim() }));
 }
+export type FinderSafetyReport = { id: string; freelancer_id: string; reason: string; created_at: string };
+export async function getMySafetyReports(finderId: string): Promise<FinderSafetyReport[]> {
+  return unwrap(await assertDb().from('freelancer_reports')
+    .select('id,freelancer_id,reason,created_at').eq('finder_id', finderId)
+    .order('created_at', { ascending: false })) || [];
+}
 export async function applyToRequest(requestId: string, freelancerId: string, note: string) {
   unwrap(await assertDb().from('applications').insert({ request_id: requestId, freelancer_id: freelancerId, note }));
 }

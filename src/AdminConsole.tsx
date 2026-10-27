@@ -18,6 +18,7 @@ type AdminUser = {
 };
 type UserList = { users: AdminUser[]; page: number; hasMore: boolean };
 type FreelancerReport = { id: string; finder_id: string; freelancer_id: string; reason: string; created_at: string };
+type FreelancerBlock = { finder_id: string; freelancer_id: string; created_at: string };
 type UserDetail = {
   services: { id: string; title: string; description: string; active: boolean; moderation_status: string }[];
   media: { id: string; kind: string; file_name: string; moderation_status: string }[];
@@ -74,6 +75,18 @@ function isBanned(user: AdminUser) {
   return !!user.bannedUntil && new Date(user.bannedUntil).getTime() > Date.now();
 }
 
+async function safetyRows<T>(table: 'freelancer_reports' | 'freelancer_blocks', columns: string): Promise<T[]> {
+  if (!db) throw new Error('Supabase settings are missing.');
+  const rows: T[] = [];
+  for (let start = 0; ; start += 500) {
+    const result = await db.from(table).select(columns).order('created_at', { ascending: false }).range(start, start + 499);
+    if (result.error) throw new Error(result.error.message);
+    const page = (result.data || []) as T[];
+    rows.push(...page);
+    if (page.length < 500) return rows;
+  }
+}
+
 export default function AdminConsole() {
   const [authState, setAuthState] = useState<'loading' | 'signed-out' | 'forbidden' | 'admin'>('loading');
   const [email, setEmail] = useState('');
@@ -82,6 +95,8 @@ export default function AdminConsole() {
   const [viewerEmail, setViewerEmail] = useState('');
   const [list, setList] = useState<UserList>({ users: [], page: 1, hasMore: false });
   const [reports, setReports] = useState<FreelancerReport[]>([]);
+  const [blocks, setBlocks] = useState<FreelancerBlock[]>([]);
+  const [safetyNames, setSafetyNames] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<Tab>('all');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -111,9 +126,23 @@ export default function AdminConsole() {
   }, []);
   const loadReports = useCallback(async () => {
     if (!db) return;
-    const result = await db.from('freelancer_reports').select('id,finder_id,freelancer_id,reason,created_at').order('created_at', { ascending: false }).limit(50);
-    if (result.error) { if (result.error.code !== '42P01') setError(result.error.message); return; }
-    setReports(result.data || []);
+    try {
+      const [nextReports, nextBlocks] = await Promise.all([
+        safetyRows<FreelancerReport>('freelancer_reports', 'id,finder_id,freelancer_id,reason,created_at'),
+        safetyRows<FreelancerBlock>('freelancer_blocks', 'finder_id,freelancer_id,created_at'),
+      ]);
+      const finderIds = [...new Set([...nextReports.map(item => item.finder_id), ...nextBlocks.map(item => item.finder_id)])];
+      const freelancerIds = [...new Set([...nextReports.map(item => item.freelancer_id), ...nextBlocks.map(item => item.freelancer_id)])];
+      const names: Record<string, string> = {};
+      for (const [table, ids] of [['finder_profiles', finderIds], ['freelancer_profiles', freelancerIds]] as const) {
+        for (let start = 0; start < ids.length; start += 100) {
+          const result = await db.from(table).select('user_id,display_name').in('user_id', ids.slice(start, start + 100));
+          if (result.error) throw new Error(result.error.message);
+          for (const row of result.data || []) names[row.user_id] = row.display_name || row.user_id;
+        }
+      }
+      setReports(nextReports); setBlocks(nextBlocks); setSafetyNames(names);
+    } catch (cause) { setError((cause as Error).message); }
   }, []);
 
   useEffect(() => {
@@ -134,6 +163,11 @@ export default function AdminConsole() {
     })();
     return () => { active = false; };
   }, [load, loadReports]);
+  useEffect(() => {
+    if (authState !== 'admin') return;
+    const timer = setInterval(() => { void loadReports(); }, 60000);
+    return () => clearInterval(timer);
+  }, [authState, loadReports]);
 
   const selected = list.users.find(user => user.id === selectedId) || null;
   const visible = useMemo(() => list.users.filter(user => {
@@ -142,6 +176,11 @@ export default function AdminConsole() {
     const terms = `${user.email || ''} ${user.id} ${user.freelancer?.display_name || ''} ${user.finder?.display_name || ''}`.toLowerCase();
     return terms.includes(query.trim().toLowerCase());
   }), [list.users, tab, query]);
+  const blockGroups = useMemo(() => {
+    const groups = new Map<string, FreelancerBlock[]>();
+    for (const block of blocks) groups.set(block.freelancer_id, [...(groups.get(block.freelancer_id) || []), block]);
+    return [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+  }, [blocks]);
 
   useEffect(() => {
     if (!selected) return;
@@ -265,7 +304,8 @@ export default function AdminConsole() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, marginBottom: 22 }}><div><h1 style={{ fontSize: 30, margin: 0 }}>Users and profiles</h1><p style={{ color: '#77748c', margin: '5px 0 0' }}>Auth users, freelancer profiles, finder profiles, premium and account access.</p></div><button disabled={busy} style={buttonStyle(true)} onClick={() => { void load(list.page); void loadReports(); }}>Refresh</button></div>
         {notice && <p role="status" style={{ color: '#186248', fontWeight: 800 }}>{notice}</p>}
         {error && <p role="alert" style={{ color: '#b72542', fontWeight: 800 }}>{error}</p>}
-        <section style={{ ...cardStyle, marginBottom: 18 }}><h2 style={{ marginTop: 0, fontSize: 19 }}>Freelancer reports ({reports.length})</h2><p style={{ color: '#77748c', fontSize: 12 }}>Private reports from Finders. Review the freelancer and take moderation action when needed.</p>{reports.length ? reports.map(report => <div key={report.id} style={{ padding: 11, borderTop: '1px solid #eee8f3', fontSize: 12 }}><b>Freelancer:</b> {list.users.find(user => user.id === report.freelancer_id)?.freelancer?.display_name || report.freelancer_id} · <b>Finder:</b> {report.finder_id} · {new Date(report.created_at).toLocaleString()}<div style={{ marginTop: 5, color: '#a23c5d' }}>{report.reason}</div>{list.users.some(user => user.id === report.freelancer_id) && <button style={{ ...buttonStyle(true), marginTop: 7 }} onClick={() => setSelectedId(report.freelancer_id)}>Review account</button>}</div>) : <p style={{ fontSize: 13, color: '#77748c' }}>No reports yet.</p>}</section>
+        <section style={{ ...cardStyle, marginBottom: 18 }}><h2 style={{ marginTop: 0, fontSize: 19 }}>Finder reports ({reports.length})</h2><p style={{ color: '#77748c', fontSize: 12 }}>Private reports from Finders, including reports submitted with a block. This list refreshes every minute while the console is open. A report does not automatically suspend an account.</p>{reports.length ? reports.map(report => <div key={report.id} style={{ padding: 11, borderTop: '1px solid #eee8f3', fontSize: 12 }}><b>Freelancer:</b> {safetyNames[report.freelancer_id] || report.freelancer_id} · <b>Reported by:</b> {safetyNames[report.finder_id] || report.finder_id} · {new Date(report.created_at).toLocaleString()}<div style={{ marginTop: 5, color: '#a23c5d' }}>Reason: {report.reason}</div><div style={{ marginTop: 3, color: '#77748c' }}>Finder ID: {report.finder_id} · Freelancer ID: {report.freelancer_id}</div>{list.users.some(user => user.id === report.freelancer_id) && <button style={{ ...buttonStyle(true), marginTop: 7 }} onClick={() => setSelectedId(report.freelancer_id)}>Review account</button>}</div>) : <p style={{ fontSize: 13, color: '#77748c' }}>No reports yet.</p>}</section>
+        <section style={{ ...cardStyle, marginBottom: 18 }}><h2 style={{ marginTop: 0, fontSize: 19 }}>Active blocks ({blocks.length})</h2><p style={{ color: '#77748c', fontSize: 12 }}>Admin only. Counts show how many distinct Finder accounts currently block each Freelancer. A block alone is not a report.</p>{blockGroups.length ? blockGroups.map(([freelancerId, group]) => <div key={freelancerId} style={{ padding: 11, borderTop: '1px solid #eee8f3', fontSize: 12 }}><b>{safetyNames[freelancerId] || freelancerId}</b> · Blocked by {group.length} {group.length === 1 ? 'Finder' : 'Finders'}<div style={{ color: '#77748c', marginTop: 4 }}>Freelancer ID: {freelancerId}</div>{group.map(block => <div key={block.finder_id} style={{ marginTop: 5, paddingLeft: 12 }}>• {safetyNames[block.finder_id] || block.finder_id} · {new Date(block.created_at).toLocaleString()} <span style={{ color: '#77748c' }}>({block.finder_id})</span></div>)}</div>) : <p style={{ fontSize: 13, color: '#77748c' }}>No active blocks.</p>}</section>
         <div style={{ ...cardStyle, padding: 18, marginBottom: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           {(['all', 'freelancers', 'finders'] as Tab[]).map(value => <button key={value} onClick={() => setTab(value)} style={buttonStyle(tab !== value)}>{value === 'all' ? 'All users' : value === 'freelancers' ? 'Freelancers' : 'Finders'}</button>)}
           <input aria-label="Search current page" placeholder="Search email, name or user ID on this page" value={query} onChange={event => setQuery(event.target.value)} style={{ ...inputStyle, maxWidth: 360, marginLeft: 'auto' }} />
