@@ -20,9 +20,11 @@ export default function ProfileBackground({ profile, canEdit, narrow, onSave }: 
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [pendingImages, setPendingImages] = useState<(File | null)[]>([]);
   const [showAllExperience, setShowAllExperience] = useState(false);
   const [showAllCertifications, setShowAllCertifications] = useState(false);
+  const [certificationEntryIndex, setCertificationEntryIndex] = useState<number | null>(null);
+  const [certificationDraft, setCertificationDraft] = useState<Certification>({ name: '', issuer: '' });
+  const [certificationImageFile, setCertificationImageFile] = useState<File | null>(null);
   const [experienceEntryIndex, setExperienceEntryIndex] = useState<number | null>(null);
   const [experienceDraft, setExperienceDraft] = useState<WorkExperience>({ role: '', organization: '' });
   const saveExperienceEntry = async () => {
@@ -34,7 +36,7 @@ export default function ProfileBackground({ profile, canEdit, narrow, onSave }: 
       : experience.map((item, index) => index === experienceEntryIndex ? experienceDraft : item);
     setBusy(true); setError('');
     try {
-      await onSave(profile.certifications || [], next);
+      await onSave(certifications, next);
       setExperience(next); setExperienceEntryIndex(null);
       setExperienceDraft({ role: '', organization: '' });
     } catch (problem) { setError((problem as Error).message); }
@@ -43,11 +45,11 @@ export default function ProfileBackground({ profile, canEdit, narrow, onSave }: 
   const removeExperienceEntry = async (index: number) => {
     const next = experience.filter((_, at) => at !== index);
     setBusy(true); setError('');
-    try { await onSave(profile.certifications || [], next); setExperience(next); }
+    try { await onSave(certifications, next); setExperience(next); }
     catch (problem) { setError((problem as Error).message); }
     finally { setBusy(false); }
   };
-  const pickImage = (index: number) => {
+  const pickImage = () => {
     if (Platform.OS !== 'web') return;
     const input = document.createElement('input');
     input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp';
@@ -55,36 +57,44 @@ export default function ProfileBackground({ profile, canEdit, narrow, onSave }: 
       const file = input.files?.[0];
       if (!file) return;
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || !file.size) { setError('Choose a JPEG, PNG or WebP certificate image.'); return; }
-      setPendingImages(items => { const next = [...items]; next[index] = file; return next; });
+      setCertificationImageFile(file);
       setError('');
     };
     input.click();
   };
-  const save = async () => {
-    if (experienceEntryIndex !== null) { setError('Save or cancel the open experience entry first.'); return; }
-    if (certifications.some(item => !item.name.trim() || !item.issuer.trim()) || experience.some(item => !item.role.trim() || !item.organization.trim())) {
-      setError('Add a title and issuer for each certification, and a role and organization for each experience.'); return;
+  const saveCertificationEntry = async () => {
+    if (!certificationDraft.name.trim() || !certificationDraft.issuer.trim()) {
+      setError('Add a title and issuer for this certification.'); return;
     }
     setBusy(true); setError('');
-    const uploaded: string[] = [];
+    let uploadedPath: string | undefined;
     let saved = false;
     try {
-      const prepared = [...certifications];
-      for (let index = 0; index < prepared.length; index++) {
-        const file = pendingImages[index];
-        if (!file) continue;
-        const imagePath = await uploadCertificationImage(profile.id, file);
-        uploaded.push(imagePath);
-        prepared[index] = { ...prepared[index], imagePath };
-      }
-      await onSave(prepared, experience);
+      if (certificationImageFile) uploadedPath = await uploadCertificationImage(profile.id, certificationImageFile);
+      const entry = { ...certificationDraft, imagePath: uploadedPath || certificationDraft.imagePath };
+      const next = certificationEntryIndex === -1
+        ? [...certifications, entry]
+        : certifications.map((item, index) => index === certificationEntryIndex ? entry : item);
+      await onSave(next, experience);
       saved = true;
-      const oldPaths = (profile.certifications || []).map(item => item.imagePath).filter((path): path is string => !!path && !prepared.some(item => item.imagePath === path));
-      if (oldPaths.length) void removeCertificationImages(oldPaths).catch(() => {});
-      setCertifications(prepared); setPendingImages([]); setEditing(false);
+      const oldPath = certificationEntryIndex !== null && certificationEntryIndex >= 0 ? certifications[certificationEntryIndex]?.imagePath : undefined;
+      if (oldPath && oldPath !== entry.imagePath) void removeCertificationImages([oldPath]).catch(() => {});
+      setCertifications(next); setCertificationEntryIndex(null);
+      setCertificationDraft({ name: '', issuer: '' }); setCertificationImageFile(null);
     }
     catch (problem) { setError((problem as Error).message); }
-    finally { if (uploaded.length && !saved) void removeCertificationImages(uploaded).catch(() => {}); setBusy(false); }
+    finally { if (uploadedPath && !saved) void removeCertificationImages([uploadedPath]).catch(() => {}); setBusy(false); }
+  };
+  const removeCertificationEntry = async (index: number) => {
+    const next = certifications.filter((_, at) => at !== index);
+    setBusy(true); setError('');
+    try {
+      await onSave(next, experience);
+      const oldPath = certifications[index]?.imagePath;
+      if (oldPath) void removeCertificationImages([oldPath]).catch(() => {});
+      setCertifications(next);
+    } catch (problem) { setError((problem as Error).message); }
+    finally { setBusy(false); }
   };
   if (!canEdit && !profile.certifications?.length && !profile.experience?.length) return null;
   const small = { color: color.muted, fontFamily: 'Nunito' as const, fontSize: 12 };
@@ -95,31 +105,42 @@ export default function ProfileBackground({ profile, canEdit, narrow, onSave }: 
   return <View style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: color.line, borderRadius: 22, padding: 21, marginTop: 18 }}>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}><View><Heading size={22}>Experience & certifications ✦</Heading><Text style={[small, { marginTop: 4 }]}>Professional journey and credentials shared by {profile.name}. These details are self-reported.</Text></View>{canEdit && !editing && <Button outline flat onPress={() => setEditing(true)}>{profile.certifications?.length || profile.experience?.length ? 'Edit details' : '+ Add details'}</Button>}</View>
     {editing && canEdit ? <View style={{ gap: 16, marginTop: 17 }}>
-      <View><Heading size={17}>Certifications</Heading><Text style={small}>Optional · up to 8 · one image per certificate</Text>{certifications.map((item, index) => <View key={`cert-${index}`} style={{ padding: 13, backgroundColor: '#f9f6ff', borderRadius: 13, marginTop: 8 }}>
-        <View style={{ flexDirection: narrow ? 'column' : 'row', gap: 12 }}>
-          <View style={{ flex: 1, gap: 7 }}><Field value={item.name} onChangeText={value => setCertifications(items => items.map((entry, at) => at === index ? { ...entry, name: value } : entry))} maxLength={120} placeholder="Certificate or course name" /><Field value={item.issuer} onChangeText={value => setCertifications(items => items.map((entry, at) => at === index ? { ...entry, issuer: value } : entry))} maxLength={120} placeholder="Issuing organization" /><Field value={item.year || ''} onChangeText={value => setCertifications(items => items.map((entry, at) => at === index ? { ...entry, year: value } : entry))} maxLength={20} placeholder="Year (optional)" /></View>
-          <View style={{ width: narrow ? '100%' : 152, minHeight: 136, borderRadius: 13, borderWidth: 1, borderStyle: 'dashed', borderColor: '#cdb8f1', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', padding: 10, gap: 7 }}>
-            {!!item.imagePath && <Image source={{ uri: certificationImageUrl(item.imagePath) }} resizeMode="contain" style={{ width: 82, height: 64, borderRadius: 7 }} />}
-            {!item.imagePath && <Text style={{ color: color.purple, fontSize: 24 }}>▧</Text>}
-            <Button outline flat disabled={busy} onPress={() => pickImage(index)} style={{ minHeight: 32 }} textStyle={{ fontSize: 11 }}>{item.imagePath || pendingImages[index] ? 'Replace image' : 'Upload image'}</Button>
-            {!!pendingImages[index] && <Text numberOfLines={2} style={{ ...small, textAlign: 'center' }}>{pendingImages[index]?.name}</Text>}
-            {!item.imagePath && !pendingImages[index] && <Text style={{ ...small, textAlign: 'center' }}>JPEG, PNG or WebP · 300 KB after resizing</Text>}
-            {!!item.imagePath && !pendingImages[index] && <Pressable accessibilityRole="button" onPress={() => setCertifications(items => items.map((entry, at) => at === index ? { ...entry, imagePath: undefined } : entry))}><Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900' }}>Remove image</Text></Pressable>}
+      <View><Heading size={17}>Certifications</Heading><Text style={small}>Optional · up to 8 · one image per certificate</Text>
+        {certifications.map((item, index) => ({ item, index })).sort((a, b) => latestYear(b.item.year) - latestYear(a.item.year)).map(({ item, index }) => <View key={`cert-${index}`} style={{ padding: 13, backgroundColor: '#f9f6ff', borderRadius: 13, marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <View style={{ width: 54, height: 54, borderRadius: 10, backgroundColor: '#eff2ff', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>{item.imagePath ? <Image source={{ uri: certificationImageUrl(item.imagePath) }} resizeMode="cover" style={{ width: 54, height: 54 }} /> : <Text style={{ color: color.purple, fontSize: 23 }}>▧</Text>}</View>
+            <View style={{ flex: 1, minWidth: 150 }}><Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 14 }}>{item.name}</Text><Text style={small}>{item.issuer}{item.year ? ` · ${item.year}` : ''}</Text></View>
+            <Button outline flat disabled={busy || certificationEntryIndex !== null || experienceEntryIndex !== null} onPress={() => { setCertificationDraft({ ...item }); setCertificationImageFile(null); setCertificationEntryIndex(index); setError(''); }} style={{ minHeight: 32 }} textStyle={{ fontSize: 11 }}>Edit</Button>
           </View>
-        </View>
-        <Pressable accessibilityRole="button" onPress={() => { setCertifications(items => items.filter((_, at) => at !== index)); setPendingImages(items => items.filter((_, at) => at !== index)); }} style={{ alignSelf: 'flex-start', marginTop: 9 }}><Text style={{ color: color.coral, fontFamily: 'Nunito', fontWeight: '900' }}>Remove certification</Text></Pressable>
-      </View>)}{certifications.length < 8 && <Button outline flat onPress={() => setCertifications(items => [...items, { name: '', issuer: '' }])} style={{ alignSelf: 'flex-start', marginTop: 9 }}>+ Add certification</Button>}</View>
+          <Pressable accessibilityRole="button" disabled={busy || certificationEntryIndex !== null || experienceEntryIndex !== null} onPress={() => void removeCertificationEntry(index)} style={{ alignSelf: 'flex-start', marginTop: 9 }}><Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900', opacity: busy || certificationEntryIndex !== null || experienceEntryIndex !== null ? .5 : 1 }}>Remove certification</Text></Pressable>
+        </View>)}
+        {certificationEntryIndex !== null && <View style={{ padding: 13, backgroundColor: '#f9f6ff', borderRadius: 13, marginTop: 8 }}><Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 13, marginBottom: 8 }}>{certificationEntryIndex === -1 ? 'New certification' : 'Edit certification'}</Text>
+          <View style={{ flexDirection: narrow ? 'column' : 'row', gap: 12 }}>
+            <View style={{ flex: 1, gap: 7 }}><Field value={certificationDraft.name} onChangeText={value => setCertificationDraft(item => ({ ...item, name: value }))} maxLength={120} placeholder="Certificate or course name" /><Field value={certificationDraft.issuer} onChangeText={value => setCertificationDraft(item => ({ ...item, issuer: value }))} maxLength={120} placeholder="Issuing organization" /><Field value={certificationDraft.year || ''} onChangeText={value => setCertificationDraft(item => ({ ...item, year: value }))} maxLength={20} placeholder="Year (optional)" /></View>
+            <View style={{ width: narrow ? '100%' : 152, minHeight: 136, borderRadius: 13, borderWidth: 1, borderStyle: 'dashed', borderColor: '#cdb8f1', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', padding: 10, gap: 7 }}>
+              {!!certificationDraft.imagePath && <Image source={{ uri: certificationImageUrl(certificationDraft.imagePath) }} resizeMode="contain" style={{ width: 82, height: 64, borderRadius: 7 }} />}
+              {!certificationDraft.imagePath && <Text style={{ color: color.purple, fontSize: 24 }}>▧</Text>}
+              <Button outline flat disabled={busy} onPress={pickImage} style={{ minHeight: 32 }} textStyle={{ fontSize: 11 }}>{certificationDraft.imagePath || certificationImageFile ? 'Replace image' : 'Upload image'}</Button>
+              {!!certificationImageFile && <Text numberOfLines={2} style={{ ...small, textAlign: 'center' }}>{certificationImageFile.name}</Text>}
+              {!certificationDraft.imagePath && !certificationImageFile && <Text style={{ ...small, textAlign: 'center' }}>JPEG, PNG or WebP · 300 KB after resizing</Text>}
+              {!!certificationDraft.imagePath && !certificationImageFile && <Pressable accessibilityRole="button" onPress={() => setCertificationDraft(item => ({ ...item, imagePath: undefined }))}><Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900' }}>Remove image</Text></Pressable>}
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}><Button disabled={busy} onPress={() => void saveCertificationEntry()}>{busy ? 'Saving…' : 'Save entry'}</Button><Button outline disabled={busy} onPress={() => { setCertificationEntryIndex(null); setCertificationDraft({ name: '', issuer: '' }); setCertificationImageFile(null); setError(''); }}>Cancel</Button></View>
+        </View>}
+        {certifications.length < 8 && certificationEntryIndex === null && <Button outline flat disabled={busy || experienceEntryIndex !== null} onPress={() => { setCertificationDraft({ name: '', issuer: '' }); setCertificationImageFile(null); setCertificationEntryIndex(-1); setError(''); }} style={{ alignSelf: 'flex-start', marginTop: 9 }}>+ Add certification</Button>}
+      </View>
       <View><Heading size={17}>Work experience</Heading><Text style={small}>Optional · up to 8</Text>
         {experience.map((item, index) => ({ item, index })).sort((a, b) => latestYear(b.item.period) - latestYear(a.item.period)).map(({ item, index }) => <View key={`work-${index}`} style={{ padding: 12, backgroundColor: '#f9f6ff', borderRadius: 13, gap: 7, marginTop: 8 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}><View style={{ flex: 1, minWidth: 150 }}><Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 14 }}>{item.role} · {item.organization}</Text>{!!item.period && <Text style={small}>{item.period}</Text>}</View><Button outline flat disabled={busy || experienceEntryIndex !== null} onPress={() => { setExperienceDraft({ ...item }); setExperienceEntryIndex(index); setError(''); }} style={{ minHeight: 32 }} textStyle={{ fontSize: 11 }}>Edit</Button></View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}><View style={{ flex: 1, minWidth: 150 }}><Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 14 }}>{item.role} · {item.organization}</Text>{!!item.period && <Text style={small}>{item.period}</Text>}</View><Button outline flat disabled={busy || experienceEntryIndex !== null || certificationEntryIndex !== null} onPress={() => { setExperienceDraft({ ...item }); setExperienceEntryIndex(index); setError(''); }} style={{ minHeight: 32 }} textStyle={{ fontSize: 11 }}>Edit</Button></View>
           {!!item.summary && <Text style={{ ...small, lineHeight: 18 }}>{item.summary}</Text>}
-          <Pressable accessibilityRole="button" disabled={busy || experienceEntryIndex !== null} onPress={() => void removeExperienceEntry(index)}><Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900', opacity: busy || experienceEntryIndex !== null ? .5 : 1 }}>Remove experience</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={busy || experienceEntryIndex !== null || certificationEntryIndex !== null} onPress={() => void removeExperienceEntry(index)}><Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900', opacity: busy || experienceEntryIndex !== null || certificationEntryIndex !== null ? .5 : 1 }}>Remove experience</Text></Pressable>
         </View>)}
         {experienceEntryIndex !== null && <View style={{ padding: 12, backgroundColor: '#f9f6ff', borderRadius: 13, gap: 7, marginTop: 8 }}><Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 13 }}>{experienceEntryIndex === -1 ? 'New experience' : 'Edit experience'}</Text><Field value={experienceDraft.role} onChangeText={value => setExperienceDraft(item => ({ ...item, role: value }))} maxLength={120} placeholder="Role or project" /><Field value={experienceDraft.organization} onChangeText={value => setExperienceDraft(item => ({ ...item, organization: value }))} maxLength={120} placeholder="Company or client" /><Field value={experienceDraft.period || ''} onChangeText={value => setExperienceDraft(item => ({ ...item, period: value }))} maxLength={60} placeholder="When, e.g. 2024–2026 (optional)" /><Field value={experienceDraft.summary || ''} onChangeText={value => setExperienceDraft(item => ({ ...item, summary: value }))} maxLength={500} multiline placeholder="What you did (optional)" /><View style={{ flexDirection: 'row', gap: 8 }}><Button disabled={busy} onPress={() => void saveExperienceEntry()}>{busy ? 'Saving…' : 'Save entry'}</Button><Button outline disabled={busy} onPress={() => { setExperienceEntryIndex(null); setExperienceDraft({ role: '', organization: '' }); setError(''); }}>Cancel</Button></View></View>}
-        {experience.length < 8 && experienceEntryIndex === null && <Button outline flat disabled={busy} onPress={() => { setExperienceDraft({ role: '', organization: '' }); setExperienceEntryIndex(-1); setError(''); }} style={{ alignSelf: 'flex-start', marginTop: 9 }}>+ Add experience</Button>}
+        {experience.length < 8 && experienceEntryIndex === null && <Button outline flat disabled={busy || certificationEntryIndex !== null} onPress={() => { setExperienceDraft({ role: '', organization: '' }); setExperienceEntryIndex(-1); setError(''); }} style={{ alignSelf: 'flex-start', marginTop: 9 }}>+ Add experience</Button>}
       </View>
       {!!error && <Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 12 }}>{error}</Text>}
-      <View style={{ flexDirection: 'row', gap: 9 }}><Button disabled={busy || experienceEntryIndex !== null} onPress={() => void save()}>{busy ? 'Saving…' : 'Save background'}</Button><Button disabled={busy} outline onPress={() => { setCertifications(profile.certifications || []); setExperience(profile.experience || []); setPendingImages([]); setExperienceEntryIndex(null); setEditing(false); setError(''); }}>Cancel</Button></View>
+      <Button disabled={busy || experienceEntryIndex !== null || certificationEntryIndex !== null} outline onPress={() => { setEditing(false); setError(''); }} style={{ alignSelf: 'flex-start' }}>Done</Button>
     </View> : <View style={{ flexDirection: narrow ? 'column' : 'row', gap: 12, marginTop: 17 }}>
       <View style={{ flex: 1, borderWidth: 1, borderColor: '#e8e9f8', borderRadius: 15, padding: 17, minWidth: 0 }}>
         <Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 16, marginBottom: 8 }}>▣  Experience</Text>

@@ -307,6 +307,14 @@ export async function setProfileSaved(finderId: string, freelancerId: string, sa
 export async function recordProfileView(freelancerId: string): Promise<void> {
   unwrap(await assertDb().rpc('record_profile_view', { p_freelancer: freelancerId }));
 }
+export async function recordProfileEngagement(freelancerId: string, kind: 'contact' | 'whatsapp'): Promise<void> {
+  unwrap(await assertDb().rpc('record_profile_engagement', { p_freelancer: freelancerId, p_kind: kind }));
+}
+export type ProfileAnalytics = { profileViews: number; uniqueVisitors: number; contactClicks: number; whatsappClicks: number; inquiries: number; dailyViews: { date: string; views: number }[] };
+export async function getMyProfileAnalytics(days: 7 | 30): Promise<ProfileAnalytics> {
+  const row = unwrap(await assertDb().rpc('my_profile_analytics', { p_days: days })) as any;
+  return { profileViews: Number(row?.profileViews || 0), uniqueVisitors: Number(row?.uniqueVisitors || 0), contactClicks: Number(row?.contactClicks || 0), whatsappClicks: Number(row?.whatsappClicks || 0), inquiries: Number(row?.inquiries || 0), dailyViews: (row?.dailyViews || []).map((item: any) => ({ date: String(item.date), views: Number(item.views || 0) })) };
+}
 export async function getMyProfileStats(): Promise<{ profileViews: number; saves: number }> {
   const rows = unwrap(await assertDb().rpc('my_profile_stats')) || [];
   return { profileViews: Number(rows[0]?.profile_views || 0), saves: Number(rows[0]?.saves || 0) };

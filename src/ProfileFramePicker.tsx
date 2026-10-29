@@ -25,18 +25,22 @@ export default function ProfileFramePicker({ person, designs, onChoose }: {
   };
   const openPremium = (frame: LockedFrame) => { setUpgradeInfo(false); setLockedFrame(frame); };
   const lockBadge = <View pointerEvents="none" style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#e4d9f8', shadowColor: '#30205e', shadowOpacity: .15, shadowRadius: 4, elevation: 2 }}><Text style={{ fontSize: 11 }}>🔒</Text></View>;
+  const presetCard = (option: typeof FRAME_PRESETS[number]) => {
+    const locked = !!option.premium && !person.premium;
+    return <Pressable key={option.key} accessibilityRole="button" accessibilityLabel={`${option.name} ${option.animated ? 'animated ' : ''}frame${locked ? ', Premium locked. View upgrade information' : ''}`} disabled={busy} onPress={() => locked ? openPremium({ name: option.name, preset: option.key }) : void choose(option.key, null)} style={{ alignItems: 'center', width: 105, padding: 8, borderRadius: 14, borderWidth: 2, borderColor: !person.frameCustomId && (person.framePreset || 'classic') === option.key ? color.purple : '#ece3f6', backgroundColor: '#fff' }}>
+      <View><FramePortrait index={person.image} imageUrl={person.imageUrl} name={person.name} size={72} frame={option.key} />{locked && lockBadge}</View>
+      <Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900', textAlign: 'center', marginTop: 7 }}>{option.name}</Text>
+      {option.premium && <Text style={{ color: color.purple, fontFamily: 'Nunito', fontSize: 10, fontWeight: '900' }}>✦ Premium</Text>}
+    </Pressable>;
+  };
   return <View style={{ marginTop: 18, padding: 18, borderWidth: 1, borderColor: '#dfd0f7', borderRadius: 19, backgroundColor: '#fbf8ff' }}>
     <Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 18, fontWeight: '900' }}>Dress up your profile photo ✦</Text>
     <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12, marginTop: 3 }}>Choose a frame. Your photo stays yours, and this outline appears on your public profile.</Text>
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 11, marginTop: 15 }}>
-      {FRAME_PRESETS.map(option => {
-        const locked = !!option.premium && !person.premium;
-        return <Pressable key={option.key} accessibilityRole="button" accessibilityLabel={`${option.name} frame${locked ? ', Premium locked. View upgrade information' : ''}`} disabled={busy} onPress={() => locked ? openPremium({ name: option.name, preset: option.key }) : void choose(option.key, null)} style={{ alignItems: 'center', width: 105, padding: 8, borderRadius: 14, borderWidth: 2, borderColor: !person.frameCustomId && (person.framePreset || 'classic') === option.key ? color.purple : '#ece3f6', backgroundColor: '#fff' }}>
-          <View><FramePortrait index={person.image} imageUrl={person.imageUrl} name={person.name} size={72} frame={option.key} />{locked && lockBadge}</View>
-          <Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900', textAlign: 'center', marginTop: 7 }}>{option.name}</Text>
-          {option.premium && <Text style={{ color: color.purple, fontFamily: 'Nunito', fontSize: 10, fontWeight: '900' }}>✦ Premium</Text>}
-        </Pressable>;
-      })}
+    <Text style={{ color: color.ink, fontFamily: 'Nunito', fontSize: 12, fontWeight: '900', marginTop: 17, marginBottom: 8 }}>Your frames</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 11 }}>{FRAME_PRESETS.filter(option => !option.premium).map(presetCard)}</View>
+    <Text style={{ color: color.purple, fontFamily: 'Nunito', fontSize: 12, fontWeight: '900', marginTop: 20, marginBottom: 8 }}>✦ Premium frames</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 11 }}>
+      {FRAME_PRESETS.filter(option => option.premium && !option.animated).map(presetCard)}
       {designs.map(design => {
         const locked = !person.premium;
         return <Pressable key={design.id} accessibilityRole="button" accessibilityLabel={`${design.name} premium frame${locked ? ', locked. View upgrade information' : ''}`} disabled={busy} onPress={() => locked ? openPremium({ name: design.name, preset: 'classic', overlayUrl: design.url }) : void choose('classic', design.id)} style={{ alignItems: 'center', width: 105, padding: 8, borderRadius: 14, borderWidth: 2, borderColor: person.frameCustomId === design.id ? color.purple : '#ece3f6', backgroundColor: '#fff' }}>
@@ -47,6 +51,9 @@ export default function ProfileFramePicker({ person, designs, onChoose }: {
       })}
       {!designs.length && <View accessibilityLabel="More premium frames coming soon" style={{ alignItems: 'center', justifyContent: 'center', width: 105, minHeight: 116, padding: 8, borderRadius: 14, borderWidth: 2, borderStyle: 'dashed', borderColor: '#dbcaf4', backgroundColor: '#f7f1ff' }}><Text style={{ fontSize: 24 }}>✦</Text><Text style={{ color: color.purple, fontFamily: 'Nunito', fontSize: 11, fontWeight: '900', textAlign: 'center' }}>More frames</Text><Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 10 }}>Coming soon</Text></View>}
     </View>
+    <Text style={{ color: color.purple, fontFamily: 'Nunito', fontSize: 12, fontWeight: '900', marginTop: 20, marginBottom: 8 }}>✧ Animated frames</Text>
+    <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 11, marginBottom: 9 }}>Premium motion appears on the website; reduced-motion settings show a still frame.</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 11 }}>{FRAME_PRESETS.filter(option => option.animated).map(presetCard)}</View>
     {!!error && <Text style={{ color: '#b63756', fontFamily: 'Nunito', marginTop: 10 }}>{error}</Text>}
     <Modal visible={!!lockedFrame} transparent animationType="fade" onRequestClose={closePrompt}>
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: 'rgba(23, 20, 43, .42)' }}>

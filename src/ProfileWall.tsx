@@ -7,6 +7,7 @@ import ResponseBadge from './ResponseBadge';
 import { SoftwareMark } from './SoftwarePicker';
 import { publicWhatsapp } from './whatsapp';
 import { FramePortrait } from './ProfileFrame';
+import { recordProfileEngagement } from './liveApi';
 
 type Props = {
   profile: Freelancer;
@@ -74,7 +75,7 @@ export default function ProfileWall({ profile, compact, narrow, rating, reviewCo
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: isPhone ? 'center' : 'flex-start', alignItems: 'center', gap: 12, flex: isPhone ? undefined : 1 }}><ResponseBadge person={profile} profile /></View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10, width: isPhone ? '100%' : undefined }}>
             <View style={{ flex: isPhone ? 1 : undefined }}><Button onPress={onChat} disabled={blocked} flat style={{ minHeight: 52, minWidth: isPhone ? undefined : 150, width: isPhone ? '100%' : undefined }}>{blocked ? 'Blocked' : 'Message'}</Button></View>
-            {!!whatsapp && !blocked && <Button outline onPress={() => Linking.openURL(whatsapp)} style={{ minHeight: 52 }}>WhatsApp ↗</Button>}
+            {!!whatsapp && !blocked && <Button outline onPress={() => { void recordProfileEngagement(profile.id, 'whatsapp').catch(() => {}); void Linking.openURL(whatsapp); }} style={{ minHeight: 52 }}>WhatsApp ↗</Button>}
             <Pressable accessibilityRole="button" accessibilityLabel={saved ? 'Remove saved profile' : 'Save profile'} onPress={onSave} style={{ width: 52, height: 52, borderRadius: 17, backgroundColor: '#f4edff', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: color.purple, fontSize: 26 }}>{saved ? '♥' : '♡'}</Text></Pressable>
             {!!onSafety && <Pressable accessibilityRole="button" accessibilityLabel={`Report or block ${profile.name}`} onPress={onSafety} style={{ minHeight: 43, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: '#e9ccda', justifyContent: 'center' }}><Text style={{ color: '#a23c5d', fontFamily: 'Nunito', fontSize: 12, fontWeight: '900' }}>{blocked ? 'Unblock / Report' : 'Report / Block'}</Text></Pressable>}
           </View>

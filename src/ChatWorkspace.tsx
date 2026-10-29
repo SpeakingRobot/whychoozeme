@@ -5,6 +5,7 @@ import { ChatIcon } from './icons';
 import { ChatInboxEntry } from './chatInbox';
 import { color, Portrait } from './UI';
 import { publicWhatsapp } from './whatsapp';
+import { recordProfileEngagement } from './liveApi';
 
 type Props = {
   viewerId: string;
@@ -81,7 +82,7 @@ export default function ChatWorkspace({ viewerId, compact, people, selected, mes
         {compact && <Pressable accessibilityRole="button" accessibilityLabel="Back to inbox" onPress={onBack} style={{ paddingRight: 5 }}><Text style={{ color: color.purple, fontSize: 27 }}>‹</Text></Pressable>}
         <View style={{ width: 42 }}><Portrait index={selected.image} imageUrl={selected.imageUrl} name={selected.name} height={42} radius={21} /></View>
         <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} style={{ color: color.ink, fontFamily: font, fontSize: 16, fontWeight: '900' }}>{selected.name}</Text>{!blocked && <Text numberOfLines={1} style={{ color: color.muted, fontFamily: font, fontSize: 11 }}>{selected.role} · {selected.place}</Text>}</View>
-        {!!whatsapp && !blocked && <Pressable accessibilityRole="link" accessibilityLabel={`Open ${selected.name}'s WhatsApp`} onPress={() => void Linking.openURL(whatsapp)} style={{ backgroundColor: '#e7f9ef', borderRadius: 17, paddingHorizontal: 12, paddingVertical: 9 }}><Text style={{ color: '#087a4c', fontFamily: font, fontSize: 12, fontWeight: '900' }}>WhatsApp ↗</Text></Pressable>}
+        {!!whatsapp && !blocked && <Pressable accessibilityRole="link" accessibilityLabel={`Open ${selected.name}'s WhatsApp`} onPress={() => { void recordProfileEngagement(selected.id, 'whatsapp').catch(() => {}); void Linking.openURL(whatsapp); }} style={{ backgroundColor: '#e7f9ef', borderRadius: 17, paddingHorizontal: 12, paddingVertical: 9 }}><Text style={{ color: '#087a4c', fontFamily: font, fontSize: 12, fontWeight: '900' }}>WhatsApp ↗</Text></Pressable>}
         {!!onSafety && role === 'finder' && <Pressable accessibilityRole="button" accessibilityLabel={`Report or block ${selected.name}`} onPress={() => onSafety(selected)} style={{ paddingHorizontal: 11, paddingVertical: 9, borderRadius: 13, borderWidth: 1, borderColor: '#edcfda' }}><Text style={{ color: '#a23c5d', fontFamily: font, fontSize: 11, fontWeight: '900' }}>{blocked ? 'Unblock' : 'Report / Block'}</Text></Pressable>}
       </View>
       <ScrollView ref={threadScroll} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end', paddingHorizontal: compact ? 15 : 31, paddingVertical: 22, gap: 9 }} onContentSizeChange={() => threadScroll.current?.scrollToEnd({ animated: false })}>
