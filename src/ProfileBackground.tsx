@@ -142,7 +142,7 @@ export default function ProfileBackground({ profile, canEdit, narrow, onSave }: 
       {!!error && <Text style={{ color: color.coral, fontFamily: 'Nunito', fontSize: 12 }}>{error}</Text>}
       <Button disabled={busy || experienceEntryIndex !== null || certificationEntryIndex !== null} outline onPress={() => { setEditing(false); setError(''); }} style={{ alignSelf: 'flex-start' }}>Done</Button>
     </View> : <View style={{ flexDirection: narrow ? 'column' : 'row', gap: 12, marginTop: 17 }}>
-      <View style={{ flex: 1, borderWidth: 1, borderColor: '#e8e9f8', borderRadius: 15, padding: 17, minWidth: 0 }}>
+      <View style={{ flex: narrow ? undefined : 1, borderWidth: 1, borderColor: '#e8e9f8', borderRadius: 15, padding: 17, minWidth: 0 }}>
         <Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 16, marginBottom: 8 }}>▣  Experience</Text>
         {visibleExperience.map((item, index) => <View key={`${item.role}-${index}`} style={{ borderLeftWidth: 2, borderLeftColor: color.purple, paddingLeft: 14, paddingBottom: 15, marginLeft: 5 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color.purple, position: 'absolute', left: -5, top: 5 }} />
@@ -150,9 +150,9 @@ export default function ProfileBackground({ profile, canEdit, narrow, onSave }: 
           {!!item.summary && <Text style={{ color: color.muted, fontFamily: 'Nunito', fontSize: 12, lineHeight: 18, marginTop: 4 }}>{item.summary}</Text>}
         </View>)}
         {!profile.experience?.length && <Text style={small}>No experience added yet.</Text>}
-        {(profile.experience?.length || 0) > 2 && <Pressable accessibilityRole="button" onPress={() => setShowAllExperience(value => !value)}><Text style={{ color: color.purple, fontFamily: 'Nunito', fontWeight: '900', fontSize: 12 }}>{showAllExperience ? 'Show less' : 'View all experience →'}</Text></Pressable>}
+        {(profile.experience?.length || 0) > 2 && <Pressable accessibilityRole="button" onPress={() => setShowAllExperience(value => !value)} style={{ alignSelf: 'flex-start', paddingVertical: 7 }}><Text style={{ color: color.purple, fontFamily: 'Nunito', fontWeight: '900', fontSize: 12 }}>{showAllExperience ? 'Show less' : 'View all experience →'}</Text></Pressable>}
       </View>
-      <View style={{ flex: 1, borderWidth: 1, borderColor: '#e8e9f8', borderRadius: 15, padding: 17, minWidth: 0 }}>
+      <View style={{ flex: narrow ? undefined : 1, borderWidth: 1, borderColor: '#e8e9f8', borderRadius: 15, padding: 17, minWidth: 0 }}>
         <Text style={{ color: color.ink, fontFamily: 'Nunito', fontWeight: '900', fontSize: 16, marginBottom: 8 }}>✧  Certifications</Text>
         {visibleCertifications.map((item, index) => <View key={`${item.name}-${index}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 8 }}>
           <View style={{ width: 52, height: 52, borderRadius: 10, backgroundColor: '#f2f5ff', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>

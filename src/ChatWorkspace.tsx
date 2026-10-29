@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { useAppSafeAreaInsets } from './AppSafeArea';
 import { ChatMessage, Freelancer } from './data';
 import { ChatIcon } from './icons';
 import { ChatInboxEntry } from './chatInbox';
@@ -44,6 +45,7 @@ function dayLabel(time: number) {
 
 export default function ChatWorkspace({ viewerId, compact, people, selected, messages, inbox, unreadTotal, draft, role, messageKey, onSelect, onBack, onClose, onWhatsappSetup, blocked = false, onSafety, onDraft, onSend, onAttach, attaching }: Props) {
   const { height } = useWindowDimensions();
+  const safeArea = useAppSafeAreaInsets();
   const [search, setSearch] = useState('');
   const [onlyUnread, setOnlyUnread] = useState(false);
   const threadScroll = useRef<ScrollView>(null);
@@ -97,7 +99,7 @@ export default function ChatWorkspace({ viewerId, compact, people, selected, mes
   </View>;
 
   return <View style={{ width: '100%', maxWidth: 1540, alignSelf: 'center', paddingHorizontal: compact ? 8 : 24, paddingTop: compact ? 10 : 22, paddingBottom: compact ? 15 : 30 }}>
-    <View style={{ flexDirection: compact ? 'column' : 'row', height: compact ? Math.max(540, height - 40) : Math.max(580, height - 80), borderRadius: 20, borderWidth: 1, borderColor: '#e8e0ef', overflow: 'hidden', backgroundColor: '#fff', shadowColor: '#473760', shadowOpacity: .08, shadowRadius: 18 }}>
+    <View style={{ flexDirection: compact ? 'column' : 'row', height: compact ? Math.max(320, height - safeArea.top - safeArea.bottom - 90) : Math.max(580, height - 80), borderRadius: 20, borderWidth: 1, borderColor: '#e8e0ef', overflow: 'hidden', backgroundColor: '#fff', shadowColor: '#473760', shadowOpacity: .08, shadowRadius: 18 }}>
       {rail}
       {(!compact || !selected) && chatList}
       {(!compact || selected) && chatPanel}

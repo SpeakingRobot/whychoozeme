@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { AppSafeAreaProvider } from './AppSafeArea';
 import App from '../App';
 import AdminConsole from './AdminConsole';
 import { isAdminRoute } from './adminRoute';
@@ -11,4 +12,4 @@ import '@fontsource/comic-neue/700.css';
 import './web.css';
 
 const root = document.getElementById('root');
-if (root) createRoot(root).render(isAdminRoute ? <AdminConsole /> : <App />);
+if (root) createRoot(root).render(isAdminRoute ? <AdminConsole /> : <AppSafeAreaProvider><App /></AppSafeAreaProvider>);
